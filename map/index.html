@@ -1,0 +1,306 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Aadorp DT — Mapbox + deck.gl</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <link href="https://unpkg.com/mapbox-gl@3.3.0/dist/mapbox-gl.css" rel="stylesheet"/>
+  <script src="https://unpkg.com/mapbox-gl@3.3.0/dist/mapbox-gl.js"></script>
+  <script src="https://unpkg.com/deck.gl@8.9.34/dist.min.js"></script>
+  <script src="https://unpkg.com/@deck.gl/mapbox@8.9.34/dist.min.js"></script>
+  <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
+  <style>
+    html, body, #map { height: 100%; margin: 0; }
+    .legend {
+      position:absolute; top:12px; left:12px; background:#fff; padding:10px 12px;
+      border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,.15); font:13px system-ui;
+    }
+    .tooltip {
+      position:absolute; pointer-events:none; background:#fff; padding:6px 8px; border-radius:8px;
+      box-shadow:0 4px 12px rgba(0,0,0,.15); font:12px system-ui; display:none;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div class="legend">
+    <b>Aadorp DT</b><br>
+    • Basemap from Studio (points + pipeline)<br>
+    • Flows via deck.gl (curved arcs)<br>
+  </div>
+  <div id="tip" class="tooltip"></div>
+
+<script>
+// ========= 0) CONFIG =========
+mapboxgl.accessToken = 'pk.eyJ1IjoiaGlzaGFtYWZhc2giLCJhIjoiY21mM3NrcGRlMDAweTJrczNyZzJhdWNyNSJ9.E_YstJ3rUCf1TtkF7_jjoQ';
+const STUDIO_STYLE = 'mapbox://styles/hishamafash/cmff3hyi6005701r94w439k4z';
+
+const PATHS = {
+  nodesGeo: 'data/nodes.geojson', // exported from Studio
+  flows:    'data/flows.csv'
+};
+
+const COLOR_BY_TYPE = {
+  H2:[8,104,172], O2:[102,187,106], H2O:[38,166,154], Heat:[251,140,0], Electricity:[142,36,170]
+};
+const DEFAULT_ARC_WIDTH = 4;
+const WIDTH_SCALE = v => Math.max(2, (v || 0) * 3);
+
+// Tooltip
+const tip = document.getElementById('tip');
+function showTip(x, y, html) {
+  if (!html) { tip.style.display = 'none'; return; }
+  tip.innerHTML = html;
+  tip.style.left = (x + 10) + 'px';
+  tip.style.top  = (y + 10) + 'px';
+  tip.style.display = 'block';
+}
+
+// Simple pin icon from deck.gl demo atlas
+const ICON_ATLAS  = 'https://raw.githubusercontent.com/visgl/deck.gl-data/master/website/icon-atlas.png';
+const ICON_MAPPING= 'https://raw.githubusercontent.com/visgl/deck.gl-data/master/website/icon-atlas.json';
+
+
+// Loaders
+async function loadCSV(path){
+  const r = await fetch(path);
+  if (!r.ok) throw new Error(`Failed to load ${path} (${r.status})`);
+  const txt = await r.text();
+  const parsed = Papa.parse(txt, {header:true, dynamicTyping:true});
+  return parsed.data.filter(row => Object.values(row).some(v => v!=='' && v!=null));
+}
+async function loadGeoJSON(path){
+  const r = await fetch(path);
+  if (!r.ok) throw new Error(`Failed to load ${path} (${r.status})`);
+  return r.json();
+}
+
+// ========= 1) MAP INIT =========
+const map = new mapboxgl.Map({
+  container: 'map',
+  style: STUDIO_STYLE,
+  center: [6.642, 52.374],
+  zoom: 14.5,
+  pitch: 60,
+  bearing: -20,
+  antialias: true
+});
+const overlay = new deck.MapboxOverlay({ interleaved: true, layers: [] });
+
+
+// Per-link arc overrides (by from_id|to_id)
+const ARC_OVERRIDES = {
+  'ELEC-01|CREM-01': { mode: 'parabola', height: 0.1 } // ← try 24–40
+};
+
+
+map.on('load', async () => {
+  // Hide Studio points to avoid duplicates
+  const POINTS_LAYER_ID = 'points-without-lines';
+  if (map.getLayer(POINTS_LAYER_ID)) {
+    map.setLayoutProperty(POINTS_LAYER_ID, 'visibility', 'none');
+  }
+
+  // Re-enable hover on the Studio pipeline line layer
+  const LINES_LAYER_ID = 'lines';
+  if (map.getLayer(LINES_LAYER_ID)) {
+    map.on('mouseenter', LINES_LAYER_ID, () => map.getCanvas().style.cursor = 'pointer');
+    map.on('mouseleave', LINES_LAYER_ID, () => { map.getCanvas().style.cursor=''; showTip(null,null,null); });
+    map.on('mousemove', LINES_LAYER_ID, (e) => {
+      const f = e.features && e.features[0];
+      if (!f) return showTip(null,null,null);
+      const p = f.properties || {};
+      showTip(e.point.x, e.point.y,
+        `<b>${p.name || 'Pipeline'}</b><br>${p.from_id || ''} → ${p.to_id || ''}<br>${p.medium || ''}`
+      );
+    });
+  }
+
+  map.addControl(overlay);
+  await enableFlows();           // now uses GeoJSON nodes
+});
+
+// ========= 2) FLOWS =========
+function haversineMeters([lng1, lat1], [lng2, lat2]) {
+  const toRad = t => t * Math.PI/180, R = 6371000;
+  const dLat = toRad(lat2-lat1), dLng = toRad(lng2-lng1);
+  const a = Math.sin(dLat/2)**2 +
+            Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(a));
+}
+
+async function enableFlows(){
+  const [nodesGeo, flows] = await Promise.all([
+    loadGeoJSON(PATHS.nodesGeo),
+    loadCSV(PATHS.flows)
+  ]);
+
+  // --- Build nodes index
+  const nodes = nodesGeo.features.map(f => {
+    const [lon, lat] = f.geometry.coordinates;
+    const p = f.properties || {};
+    return { id: String(p.id), name: p.name || p.id, type: p.type, lon, lat };
+  });
+  const byId = Object.fromEntries(nodes.map(n => [n.id, n]));
+
+  // --- Join flows with node coords
+  const arcDataAll = flows.map(f => {
+    const a = byId[f.from_id], b = byId[f.to_id];
+    return (a && b) ? {
+      ...f,
+      from_id: String(f.from_id),
+      to_id: String(f.to_id),
+      flow_type: String(f.flow_type),
+      value: (f.value === '' || f.value == null) ? null : +f.value,
+      unit: f.unit || '',
+      sourcePosition:[a.lon,a.lat],
+      targetPosition:[b.lon,b.lat]
+    } : null;
+  }).filter(Boolean);
+
+  // --- Helpers
+  const lenM = d => haversineMeters(d.sourcePosition, d.targetPosition);
+  const SHORT_MAX = 800;    // m
+  const LONG_MIN  = 3000;   // m
+
+  // Identify the special long link (adjust IDs to your CSV if needed)
+  const isElecToCrem = d => (
+    (d.from_id === 'ELEC-01' && d.to_id === 'CREM-01') ||
+    (d.from_id.toLowerCase().includes('elec') && d.to_id.toLowerCase().includes('crem'))
+  );
+
+  // Height functions
+  const hShort = L => Math.min(8,  0.012 * L);
+  const hMid   = L => Math.min(18, 0.020 * Math.sqrt(L));
+  // gentler special curve (tune if needed)
+  const hSpec  = L => Math.min(40, 0.012 * L);
+
+  // --- Partition data: short/mid/specialParabolic vs longGreatCircle
+  const parabolicData = [];    // short + mid + special long (forced parabola)
+  const greatCircleData = [];  // default long links (hug the ground)
+
+  for (const d of arcDataAll) {
+    const key = `${d.from_id}|${d.to_id}`;
+    const ov = ARC_OVERRIDES[key];
+
+    // 1) Per-link override takes precedence
+    if (ov) {
+      if (ov.mode === 'parabola') {
+        d.__arcHeight = ov.height;       // fixed height for this link
+        parabolicData.push(d);
+      } else {
+        greatCircleData.push(d);
+      }
+      continue;
+    }
+
+    // 2) Special Elec -> Crem fallback (if IDs vary)
+    if (isElecToCrem(d)) {
+      d.__arcHeight = hSpec(lenM(d));
+      parabolicData.push(d);
+      continue;
+    }
+
+    // 3) Normal tiering by length
+    const L = lenM(d);
+    if (L <= SHORT_MAX) {
+      d.__arcHeight = hShort(L);
+      parabolicData.push(d);
+    } else if (L < LONG_MIN) {
+      d.__arcHeight = hMid(L);
+      parabolicData.push(d);
+    } else {
+      greatCircleData.push(d);
+    }
+  }
+
+  // --- Layers
+  const parabolicLayer = new deck.ArcLayer({
+    id: 'flows-parabolic',
+    data: parabolicData,
+    pickable: true,
+    greatCircle: false,
+    getSourcePosition: d => d.sourcePosition,
+    getTargetPosition: d => d.targetPosition,
+    getSourceColor: d => COLOR_BY_TYPE[d.flow_type] || [120,120,120],
+    getTargetColor: d => COLOR_BY_TYPE[d.flow_type] || [120,120,120],
+    widthUnits: 'pixels',
+    getWidth: d => d.value == null ? DEFAULT_ARC_WIDTH : WIDTH_SCALE(d.value),
+    getHeight: d => d.__arcHeight || 0,
+    parameters: { depthTest:false },
+    onHover: ({object,x,y}) => {
+      if (!object) return showTip(null,null,null);
+      const v = object.value == null ? '-' : object.value;
+      showTip(x,y,`<b>${object.flow_type}</b><br>${object.from_id} → ${object.to_id}<br>${v} ${object.unit}`);
+    }
+  });
+
+  const greatCircleLayer = new deck.ArcLayer({
+    id: 'flows-greatcircle',
+    data: greatCircleData,
+    pickable: true,
+    greatCircle: true,
+    getHeight: 0,
+    getSourcePosition: d => d.sourcePosition,
+    getTargetPosition: d => d.targetPosition,
+    getSourceColor: d => COLOR_BY_TYPE[d.flow_type] || [120,120,120],
+    getTargetColor: d => COLOR_BY_TYPE[d.flow_type] || [120,120,120],
+    widthUnits: 'pixels',
+    getWidth: d => d.value == null ? DEFAULT_ARC_WIDTH : WIDTH_SCALE(d.value),
+    parameters: { depthTest:false },
+    onHover: ({object,x,y}) => {
+      if (!object) return showTip(null,null,null);
+      const v = object.value == null ? '-' : object.value;
+      showTip(x,y,`<b>${object.flow_type}</b><br>${object.from_id} → ${object.to_id}<br>${v} ${object.unit}`);
+    }
+  });
+
+  // Pins + labels from the same GeoJSON
+  const nodesPins = new deck.IconLayer({
+    id: 'nodes-pins',
+    data: nodes,
+    iconAtlas: ICON_ATLAS,
+    iconMapping: ICON_MAPPING,
+    getIcon: () => 'marker',
+    sizeUnits: 'pixels',
+    sizeScale: 10,
+    getSize: 2.8,
+    getPosition: d => [d.lon, d.lat],
+    getColor: [0, 122, 255],
+    pickable: true,
+    parameters: { depthTest:false },
+    onHover: ({object, x, y}) => {
+      if (!object) return showTip(null,null,null);
+      showTip(x, y, `<b>${object.name || object.id}</b><br>${object.id} (${object.type||'-'})`);
+    }
+  });
+
+  const nodesLabels = new deck.TextLayer({
+    id: 'nodes-labels',
+    data: nodes,
+    getPosition: d => [d.lon, d.lat],
+    getText: d => d.name || d.id,
+    getSize: 12,
+    fontFamily: 'Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif',
+    getColor: [30,30,30,220],
+    getTextAnchor: 'middle',
+    getAlignmentBaseline: 'top',
+    background: true,
+    getBackgroundColor: [255,255,255,220],
+    backgroundPadding: [3,3],
+    parameters: { depthTest:false }
+  });
+
+  overlay.setProps({ layers: [greatCircleLayer, parabolicLayer, nodesPins, nodesLabels] });
+
+  // Diagnostics: missing node IDs
+  const missing = flows.filter(f => !(byId[f.from_id] && byId[f.to_id]));
+  if (missing.length) console.warn('[FLOWS] Missing node IDs in nodes.geojson:', missing);
+}
+
+map.getCanvas().addEventListener('mouseleave', () => showTip(null,null,null));
+
+
+</script>
+</body>
+</html>
