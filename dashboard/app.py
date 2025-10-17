@@ -4,6 +4,8 @@ import plotly.graph_objects as go
 import numpy as np
 import altair as alt
 import calendar
+import pydeck as pdk
+import geopandas as gpd
 
 # =======================
 # PAGE SETUP
@@ -54,6 +56,18 @@ ELECTROLYZER_KW = 70                      # Electrolyser rated power
 SEC = 48                              # Specific energy consumption (kWh per kg H₂)
 LHV_H2 = 33.3                             # Lower heating value of hydrogen (kWh/kg)
 EMISSION_FACTOR_GRID = 0.388              # Dutch grid CO₂ intensity (kg CO₂/kWh)
+
+
+MAPBOX_KEY = 'pk.eyJ1IjoiY3lnbnVzMjYiLCJhIjoiY2s5Z2MzeWVvMGx3NTNtbzRnbGtsOXl6biJ9.8SLdJuFQzuN-s4OlHbwzLg'
+STUDIO_STYLE ='mapbox://styles/cygnus26/clsei2b92016j01qqfc143six'
+NODES_GEOJSON="../map/data/nodes.geojson"  # Placeholder path for map data
+map_viewState = pdk.ViewState(
+    latitude=52.374,
+    longitude=6.642,
+    zoom=14.5,
+    pitch=60,
+    bearing=-20
+)
 
 # Monthly capacity factors (CF) used to scale generation per calendar hour.
 solar_cf = np.array([0.0425, 0.0752, 0.1210, 0.1656, 0.1701, 0.1755,
@@ -297,6 +311,34 @@ grid_emitted_co2_kg = annual_grid_kwh_to_el * EMISSION_FACTOR_GRID
 
 
 # =======================
+# MAP DATA LOADING
+# =====================
+
+def load_map_data():
+    gdf_nodes = gpd.GeoDataFrame.from_file(NODES_GEOJSON)
+    gdf_nodes['lon'] = gdf_nodes.geometry.apply(lambda geom: geom.x)
+    gdf_nodes['lat'] = gdf_nodes.geometry.apply(lambda geom: geom.y)
+
+
+    df_from_to = pd.read_csv("../map/data/flows.csv")
+    src = gdf_nodes.rename(columns={"id": "from_id", "lon": "from_lon", "lat": "from_lat"})[["from_id", "from_lon", "from_lat"]]
+    dst = gdf_nodes.rename(columns={"id": "to_id",   "lon": "to_lon",   "lat": "to_lat"})[["to_id",   "to_lon",   "to_lat"]]
+
+    df_from_to = df_from_to.merge(src, on="from_id", how="left").merge(dst, on="to_id", how="left")
+
+    COLOR_BY_TYPE = {
+        "H2": [8, 104, 172],
+        "O2": [102, 187, 106],
+        "H2O": [38, 166, 154],
+        "Heat": [251, 140, 0],
+        "Electricity": [142, 36, 170]
+    }
+
+    df_from_to["color"] = df_from_to["flow_type"].map(COLOR_BY_TYPE)
+    return gdf_nodes, df_from_to
+
+
+# =======================
 # LAYOUT: KPIs, MAP, CHARTS
 # =======================
 col1, col2, col3 = st.columns([1.2, 2.6, 1.4], gap="small")
@@ -479,12 +521,56 @@ with col1:
 
 # ===== CENTER COLUMN: MAP PLACEHOLDER =====
 with col2:
-    st.markdown("""
-        <div style="background-color:#2e2e2e; padding:20px; border-radius:8px; height:600px;
-                    display:flex; align-items:center; justify-content:center;">
-          <span style="color:#cccccc; font-size:18px;">Map Placeholder</span>
-        </div>
-    """, unsafe_allow_html=True)
+    
+    nodes, edges = load_map_data()
+
+    def load_layers():
+        # Placeholder for map layers (e.g., facilities, infrastructure).
+        layers = [
+            pdk.Layer(
+                "ScatterplotLayer",
+                data=nodes,
+                get_position=["lon", "lat"],
+                get_color="[200, 30, 0, 160]",
+                auto_highlight=True,
+                get_radius=10,
+                pickable=True,
+                
+            ),
+            pdk.Layer(
+                "ArcLayer",
+                data=edges,
+                get_source_position=["from_lon", "from_lat"],
+                get_target_position=["to_lon", "to_lat"],
+                get_source_color="color",
+                get_target_color="color",
+                pickable=True,
+                auto_highlight=True,
+                width_scale=5,
+                width_min_pixels=2
+            )
+            
+            # Add more layers as needed
+            
+    
+            
+        ]
+        return layers
+    
+    deck = pdk.Deck(layers=load_layers(), initial_view_state=map_viewState, 
+                    tooltip={"text": "{name}"},
+                    api_keys={"mapbox": 'pk.eyJ1IjoiaGlzaGFtYWZhc2giLCJhIjoiY21mM3NrcGRlMDAweTJrczNyZzJhdWNyNSJ9.E_YstJ3rUCf1TtkF7_jjoQ'},
+                    map_provider="mapbox",
+                    map_style="light",
+                    )
+    map_card = st.pydeck_chart(deck, use_container_width=True)
+    
+    # st.markdown("""
+    #     <div style="background-color:#2e2e2e; padding:20px; border-radius:8px; height:600px;
+    #                 display:flex; align-items:center; justify-content:center;">
+    #       <span style="color:#cccccc; font-size:18px;">Map Placeholder</span>
+    #     </div>
+    # """, unsafe_allow_html=True)
 
 # ===== RIGHT COLUMN: CONTEXT CHARTS =====
 with col3:
