@@ -339,6 +339,10 @@ def load_map_data():
     }
 
     df_from_to["color"] = df_from_to["flow_type"].map(COLOR_BY_TYPE)
+    
+    # TODO: transform df_from_to into GeoDataFrame with LineString geometries for edges
+    
+    
     return gdf_nodes, df_from_to
 
 
