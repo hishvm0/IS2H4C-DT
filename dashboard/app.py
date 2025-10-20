@@ -6,6 +6,10 @@ import altair as alt
 import calendar
 import pydeck as pdk
 import geopandas as gpd
+import streamlit.components.v1 as components
+import sourcetypes
+
+
 
 # =======================
 # PAGE SETUP
@@ -522,48 +526,64 @@ with col1:
 # ===== CENTER COLUMN: MAP PLACEHOLDER =====
 with col2:
     
-    nodes, edges = load_map_data()
+    with open("../map/map_test.html", 'r', encoding="utf-8") as f:
+        mapbox_html = f.read()
+        
+    nodes , edges = load_map_data()
+    
+    nodes_json = nodes.to_json()
+    edges_json = edges.to_json()
+        
+    mapbox_html = mapbox_html.replace("__NODES__", nodes_json)
+    mapbox_html = mapbox_html.replace("__EDGES__", edges_json)
+        
 
-    def load_layers():
-        # Placeholder for map layers (e.g., facilities, infrastructure).
-        layers = [
-            pdk.Layer(
-                "ScatterplotLayer",
-                data=nodes,
-                get_position=["lon", "lat"],
-                get_color="[200, 30, 0, 160]",
-                auto_highlight=True,
-                get_radius=10,
-                pickable=True,
+    components.html(mapbox_html, height=600)
+    
+    
+    
+    # nodes, edges = load_map_data()
+
+    # def load_layers():
+    #     # Placeholder for map layers (e.g., facilities, infrastructure).
+    #     layers = [
+    #         pdk.Layer(
+    #             "ScatterplotLayer",
+    #             data=nodes,
+    #             get_position=["lon", "lat"],
+    #             get_color="[200, 30, 0, 160]",
+    #             auto_highlight=True,
+    #             get_radius=10,
+    #             pickable=True,
                 
-            ),
-            pdk.Layer(
-                "ArcLayer",
-                data=edges,
-                get_source_position=["from_lon", "from_lat"],
-                get_target_position=["to_lon", "to_lat"],
-                get_source_color="color",
-                get_target_color="color",
-                pickable=True,
-                auto_highlight=True,
-                width_scale=5,
-                width_min_pixels=2
-            )
+    #         ),
+    #         pdk.Layer(
+    #             "ArcLayer",
+    #             data=edges,
+    #             get_source_position=["from_lon", "from_lat"],
+    #             get_target_position=["to_lon", "to_lat"],
+    #             get_source_color="color",
+    #             get_target_color="color",
+    #             pickable=True,
+    #             auto_highlight=True,
+    #             width_scale=5,
+    #             width_min_pixels=2
+    #         )
             
-            # Add more layers as needed
+    #         # Add more layers as needed
             
     
             
-        ]
-        return layers
+    #     ]
+    #     return layers
     
-    deck = pdk.Deck(layers=load_layers(), initial_view_state=map_viewState, 
-                    tooltip={"text": "{name}"},
-                    api_keys={"mapbox": 'pk.eyJ1IjoiaGlzaGFtYWZhc2giLCJhIjoiY21mM3NrcGRlMDAweTJrczNyZzJhdWNyNSJ9.E_YstJ3rUCf1TtkF7_jjoQ'},
-                    map_provider="mapbox",
-                    map_style="light",
-                    )
-    map_card = st.pydeck_chart(deck, use_container_width=True)
+    # deck = pdk.Deck(layers=load_layers(), initial_view_state=map_viewState, 
+    #                 tooltip={"text": "{name}"},
+    #                 api_keys={"mapbox": 'pk.eyJ1IjoiaGlzaGFtYWZhc2giLCJhIjoiY21mM3NrcGRlMDAweTJrczNyZzJhdWNyNSJ9.E_YstJ3rUCf1TtkF7_jjoQ'},
+    #                 map_provider="mapbox",
+    #                 map_style="light",
+    #                 )
+    # map_card = st.pydeck_chart(deck, use_container_width=True)
     
     # st.markdown("""
     #     <div style="background-color:#2e2e2e; padding:20px; border-radius:8px; height:600px;
