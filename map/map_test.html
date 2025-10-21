@@ -110,9 +110,67 @@ body { margin: 0; padding: 0; }
                 'line-color': '#ff0000',
                 'line-width': 4,
                 'line-dasharray': [0, 2, 4],
-                'line-emmisive-strength': 1
+                'line-emissive-strength': 1
             }
         });
+// --- Listen for messages to update the map without reloading ---
+window.addEventListener('message', (event) => {
+  // Optional: restrict origins for security (replace with your Streamlit origin)
+  // if (event.origin !== 'http://localhost:8501') return;
+
+  const msg = event.data;
+  if (!msg || typeof msg !== 'object') return;
+
+  // Update edges
+  if (msg.type === 'reloadEdges' && msg.data) {
+    try {
+      const newEdges = (typeof msg.data === 'string') ? JSON.parse(msg.data) : msg.data;
+      const src = map.getSource('edges');
+      if (src) src.setData(newEdges);
+    } catch (e) {
+      console.error('Failed to parse edges payload', e);
+    }
+  }
+
+  // Update nodes
+  if (msg.type === 'reloadNodes' && msg.data) {
+    try {
+      const newNodes = (typeof msg.data === 'string') ? JSON.parse(msg.data) : msg.data;
+      const src = map.getSource('nodes');
+      if (src) src.setData(newNodes);
+    } catch (e) {
+      console.error('Failed to parse nodes payload', e);
+    }
+  }
+});
+
+        // --- Hover tooltip for edges ---
+        const popup = new mapboxgl.Popup({
+          closeButton: false,
+          closeOnClick: false
+        });
+
+        // change cursor when hovering lines
+        map.on('mouseenter', 'edges-foreground', () => {
+          map.getCanvas().style.cursor = 'pointer';
+        });
+        map.on('mouseleave', 'edges-foreground', () => {
+          map.getCanvas().style.cursor = '';
+          popup.remove();
+        });
+
+        // show tooltip following the mouse
+        map.on('mousemove', 'edges-foreground', (e) => {
+          const f = e.features && e.features[0];
+          if (!f) return;
+          const content =
+            f.properties.tooltip ||
+            `${f.properties.flow_type || ''}: ${f.properties.from_id || ''} → ${f.properties.to_id || ''}`;
+          popup.setLngLat(e.lngLat).setHTML(content).addTo(map);
+        });
+
+
+
 
         // ------- ANIMATE THE DASHED LINE -------
 
@@ -146,7 +204,7 @@ body { margin: 0; padding: 0; }
 
             if (newStep !== step) {
                 map.setPaintProperty(
-                    'line-dashed',
+                    'edges-foreground',
                     'line-dasharray',
                     dashArraySequence[step]
                 );
@@ -155,6 +213,38 @@ body { margin: 0; padding: 0; }
 
             // Request the next frame of the animation.
             requestAnimationFrame(animateDashArray);
+
+
+            // --- Pause/Play control ---
+            const btn = document.getElementById('pause');
+            let paused = false;
+            let rafId = null;
+
+            btn.addEventListener('click', () => {
+              paused = !paused;
+              btn.classList.toggle('pause', paused); // swaps label via CSS
+              if (!paused) {
+                // resume
+                rafId = requestAnimationFrame(animateDashArray);
+              } else if (rafId) {
+                // pause
+                cancelAnimationFrame(rafId);
+                rafId = null;
+              }
+            });
+
+            // update animate function according to pause button
+            function animateDashArray(timestamp) {
+              if (paused) return; // do nothing while paused
+
+              const newStep = parseInt((timestamp / 50) % dashArraySequence.length);
+              if (newStep !== step) {
+                map.setPaintProperty('edges-foreground', 'line-dasharray', dashArraySequence[step]);
+                step = newStep;
+              }
+
+              rafId = requestAnimationFrame(animateDashArray);
+            }
         }
 
         // start the animation
@@ -162,6 +252,14 @@ body { margin: 0; padding: 0; }
     
     });
 </script>
+<!-- dynamic info label -->
+<div id="energyLabel"
+     style="position:absolute;top:10px;right:10px;
+            background:rgba(0,0,0,0.6);color:white;
+            padding:6px 10px;border-radius:6px;
+            font-size:14px;">
+  Source: __ENERGY_SOURCE__
+</div>
 
 </body>
 </html>

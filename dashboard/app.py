@@ -7,7 +7,8 @@ import calendar
 import pydeck as pdk
 import geopandas as gpd
 import streamlit.components.v1 as components
-import sourcetypes
+from shapely.geometry import LineString
+
 
 
 
@@ -319,31 +320,50 @@ grid_emitted_co2_kg = annual_grid_kwh_to_el * EMISSION_FACTOR_GRID
 # =====================
 
 def load_map_data():
+    # --- Load node locations ---
     gdf_nodes = gpd.GeoDataFrame.from_file(NODES_GEOJSON)
-    gdf_nodes['lon'] = gdf_nodes.geometry.apply(lambda geom: geom.x)
-    gdf_nodes['lat'] = gdf_nodes.geometry.apply(lambda geom: geom.y)
+    gdf_nodes["lon"] = gdf_nodes.geometry.x
+    gdf_nodes["lat"] = gdf_nodes.geometry.y
 
+    # --- Load flow data and attach coordinates ---
+    df_flows = pd.read_csv("../map/data/flows.csv")
+    src = gdf_nodes.rename(columns={"id": "from_id", "lon": "from_lon", "lat": "from_lat"})[
+        ["from_id", "from_lon", "from_lat"]
+    ]
+    dst = gdf_nodes.rename(columns={"id": "to_id", "lon": "to_lon", "lat": "to_lat"})[
+        ["to_id", "to_lon", "to_lat"]
+    ]
+    df_flows = df_flows.merge(src, on="from_id", how="left").merge(dst, on="to_id", how="left")
 
-    df_from_to = pd.read_csv("../map/data/flows.csv")
-    src = gdf_nodes.rename(columns={"id": "from_id", "lon": "from_lon", "lat": "from_lat"})[["from_id", "from_lon", "from_lat"]]
-    dst = gdf_nodes.rename(columns={"id": "to_id",   "lon": "to_lon",   "lat": "to_lat"})[["to_id",   "to_lon",   "to_lat"]]
-
-    df_from_to = df_from_to.merge(src, on="from_id", how="left").merge(dst, on="to_id", how="left")
-
+    # --- Assign colors by flow type ---
     COLOR_BY_TYPE = {
         "H2": [8, 104, 172],
         "O2": [102, 187, 106],
         "H2O": [38, 166, 154],
         "Heat": [251, 140, 0],
-        "Electricity": [142, 36, 170]
+        "Electricity": [142, 36, 170],
     }
+    df_flows["color"] = df_flows["flow_type"].map(COLOR_BY_TYPE)
 
-    df_from_to["color"] = df_from_to["flow_type"].map(COLOR_BY_TYPE)
-    
-    # TODO: transform df_from_to into GeoDataFrame with LineString geometries for edges
-    
-    
-    return gdf_nodes, df_from_to
+    # Build a concise tooltip per flow (adjust fields if your CSV differs)
+    df_flows["tooltip"] = (
+            df_flows["flow_type"].astype(str) + ": " +
+            df_flows["from_id"].astype(str) + " → " + df_flows["to_id"].astype(str) +
+            np.where(df_flows.get("value").notna(), " | " + df_flows["value"].astype(str), "") +
+            np.where(df_flows.get("unit").notna(), " " + df_flows["unit"].astype(str), "")
+    )
+
+    # --- Create LineString geometry for each edge ---
+    gdf_edges = gpd.GeoDataFrame(
+        df_flows,
+        geometry=df_flows.apply(
+            lambda r: LineString([(r["from_lon"], r["from_lat"]), (r["to_lon"], r["to_lat"])]),
+            axis=1,
+        ),
+        crs="EPSG:4326",
+    )
+
+    return gdf_nodes, gdf_edges
 
 
 # =======================
@@ -540,12 +560,13 @@ with col2:
         
     mapbox_html = mapbox_html.replace("__NODES__", nodes_json)
     mapbox_html = mapbox_html.replace("__EDGES__", edges_json)
-        
+
+    mapbox_html = mapbox_html.replace("__ENERGY_SOURCE__", str(energy_source))
 
     components.html(mapbox_html, height=600)
-    
-    
-    
+
+
+
     # nodes, edges = load_map_data()
 
     # def load_layers():
