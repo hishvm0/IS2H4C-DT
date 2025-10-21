@@ -33,7 +33,7 @@ body { margin: 0; padding: 0; }
 <button id="pause"></button>
 <script>
 
-    mapboxgl.accessToken = 'pk.eyJ1IjoiaGlzaGFtYWZhc2giLCJhIjoiY21mM3NrcGRlMDAweTJrczNyZzJhdWNyNSJ9.E_YstJ3rUCf1TtkF7_jjoQ';
+    mapboxgl.accessToken = 'pk.eyJ1IjoiY3lnbnVzMjYiLCJhIjoiY2s5Z2MzeWVvMGx3NTNtbzRnbGtsOXl6biJ9.8SLdJuFQzuN-s4OlHbwzLg';
 
     // Parse the embedded GeoJSON
     const points = JSON.parse(document.getElementById('nodes-data').textContent);
@@ -42,12 +42,12 @@ body { margin: 0; padding: 0; }
     const map = new mapboxgl.Map({
         container: 'map',
         // Choose from Mapbox's core styles, or make your own style with Mapbox Studio
-        center: [6.642, 52.374],
-        zoom: 14.5,
+        center: [6.644, 52.366],
+        zoom: 15.5,
         pitch: 60,
         bearing: -20,
         antialias: true,
-        style: 'mapbox://styles/hishamafash/cmff3hyi6005701r94w439k4z'
+        style: 'mapbox://styles/cygnus26/cmh0rq554001y01sc2i2z9i6k'
     });
 
 
@@ -72,18 +72,17 @@ body { margin: 0; padding: 0; }
         map.getSource('edges').setData(edges);
     }
 
-        // -------- ADD LAYERS --------
-        map.addLayer({
-            'id': 'nodes',
-            'type': 'circle',
-            'source': 'nodes',
-            'paint': {
-                'circle-radius': 4,
-                'circle-color': '#007cbf'
+    // -------- ADD ICONS --------
+        map.loadImage(
+            'https://img.icons8.com/3d-fluency/94/location.png',
+            (error, image) => {
+                if (error) throw error;
+                map.addImage('node-icon', image);
             }
-        });
+        );
 
-        map.addLayer({
+        // -------- ADD LAYERS --------
+      map.addLayer({
             'id': 'edges-background',
             'type': 'line',
             'source': 'edges',
@@ -92,9 +91,9 @@ body { margin: 0; padding: 0; }
                 'line-cap': 'round'
             },
             'paint': {
-                'line-color': 'yellow',
-                'line-width': 2,
-                'line-opacity': 0.3
+                'line-color': 'white',
+                'line-width': ['get', 'value'],
+                'line-opacity': 0.6
             }
         });
 
@@ -107,12 +106,24 @@ body { margin: 0; padding: 0; }
                 'line-cap': 'round'
             },
             'paint': {
-                'line-color': '#ff0000',
-                'line-width': 4,
+                'line-color': ['get', 'color'],
+                'line-width': ['get', 'value'],
                 'line-dasharray': [0, 2, 4],
-                'line-emissive-strength': 1
+                'line-emissive-strength': 1.5
             }
         });
+
+          map.addLayer({
+            'id': 'nodes',
+            'type': 'symbol',
+            'source': 'nodes',
+            'layout': {
+                'icon-image': 'node-icon',
+                'icon-size': 0.3,
+                'icon-allow-overlap': true
+            }
+        });
+        
 // --- Listen for messages to update the map without reloading ---
 window.addEventListener('message', (event) => {
   // Optional: restrict origins for security (replace with your Streamlit origin)
@@ -150,6 +161,11 @@ window.addEventListener('message', (event) => {
           closeOnClick: false
         });
 
+        const popupNode = new mapboxgl.Popup({
+          closeButton: false,
+          closeOnClick: false
+        });
+
         // change cursor when hovering lines
         map.on('mouseenter', 'edges-foreground', () => {
           map.getCanvas().style.cursor = 'pointer';
@@ -169,7 +185,23 @@ window.addEventListener('message', (event) => {
           popup.setLngLat(e.lngLat).setHTML(content).addTo(map);
         });
 
+        // ------- HOVER TOOLTIP FOR NODES -------
+        map.on('mouseenter', 'nodes', () => {
+          map.getCanvas().style.cursor = 'pointer';
+        });
+        map.on('mouseleave', 'nodes', () => {
+          map.getCanvas().style.cursor = '';
+          popupNode.remove();
+        });
 
+        map.on('mousemove', 'nodes', (e) => {
+          const f = e.features && e.features[0];
+          if (!f) return;
+          const content =
+            f.properties.tooltip ||
+            `Name: ${f.properties.name || ''}`;
+          popupNode.setLngLat(e.lngLat).setHTML(content).addTo(map);
+        });
 
 
         // ------- ANIMATE THE DASHED LINE -------

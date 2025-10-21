@@ -1,3 +1,4 @@
+import random
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -340,7 +341,7 @@ def load_map_data():
         "H2": [8, 104, 172],
         "O2": [102, 187, 106],
         "H2O": [38, 166, 154],
-        "Heat": [251, 140, 0],
+        "Waste Heat": [251, 140, 0],
         "Electricity": [142, 36, 170],
     }
     df_flows["color"] = df_flows["flow_type"].map(COLOR_BY_TYPE)
@@ -362,6 +363,8 @@ def load_map_data():
         ),
         crs="EPSG:4326",
     )
+    
+    gdf_edges["value"] = gdf_edges["value"].apply(lambda x : random.randint(1,10))
 
     return gdf_nodes, gdf_edges
 
@@ -554,6 +557,7 @@ with col2:
         mapbox_html = f.read()
         
     nodes , edges = load_map_data()
+    print(edges) 
     
     nodes_json = nodes.to_json()
     edges_json = edges.to_json()
