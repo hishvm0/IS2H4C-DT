@@ -33,7 +33,7 @@ body { margin: 0; padding: 0; }
 <button id="pause"></button>
 <script>
 
-    mapboxgl.accessToken = 'pk.eyJ1IjoiaGlzaGFtYWZhc2giLCJhIjoiY21mM3NrcGRlMDAweTJrczNyZzJhdWNyNSJ9.E_YstJ3rUCf1TtkF7_jjoQ';
+    mapboxgl.accessToken = 'pk.eyJ1IjoiY3lnbnVzMjYiLCJhIjoiY2s5Z2MzeWVvMGx3NTNtbzRnbGtsOXl6biJ9.8SLdJuFQzuN-s4OlHbwzLg';
 
     // Parse the embedded GeoJSON
     const points = JSON.parse(document.getElementById('nodes-data').textContent);
@@ -42,12 +42,12 @@ body { margin: 0; padding: 0; }
     const map = new mapboxgl.Map({
         container: 'map',
         // Choose from Mapbox's core styles, or make your own style with Mapbox Studio
-        center: [6.642, 52.374],
-        zoom: 14.5,
+        center: [6.644, 52.366],
+        zoom: 15.5,
         pitch: 60,
         bearing: -20,
         antialias: true,
-        style: 'mapbox://styles/hishamafash/cmff3hyi6005701r94w439k4z'
+        style: 'mapbox://styles/cygnus26/cmh0rq554001y01sc2i2z9i6k'
     });
 
 
@@ -72,18 +72,17 @@ body { margin: 0; padding: 0; }
         map.getSource('edges').setData(edges);
     }
 
-        // -------- ADD LAYERS --------
-        map.addLayer({
-            'id': 'nodes',
-            'type': 'circle',
-            'source': 'nodes',
-            'paint': {
-                'circle-radius': 4,
-                'circle-color': '#007cbf'
+    // -------- ADD ICONS --------
+        map.loadImage(
+            'https://img.icons8.com/3d-fluency/94/location.png',
+            (error, image) => {
+                if (error) throw error;
+                map.addImage('node-icon', image);
             }
-        });
+        );
 
-        map.addLayer({
+        // -------- ADD LAYERS --------
+      map.addLayer({
             'id': 'edges-background',
             'type': 'line',
             'source': 'edges',
@@ -92,9 +91,9 @@ body { margin: 0; padding: 0; }
                 'line-cap': 'round'
             },
             'paint': {
-                'line-color': 'yellow',
-                'line-width': 2,
-                'line-opacity': 0.3
+                'line-color': 'white',
+                'line-width': ['get', 'value'],
+                'line-opacity': 0.6
             }
         });
 
@@ -107,12 +106,103 @@ body { margin: 0; padding: 0; }
                 'line-cap': 'round'
             },
             'paint': {
-                'line-color': '#ff0000',
-                'line-width': 4,
+                'line-color': ['get', 'color'],
+                'line-width': ['get', 'value'],
                 'line-dasharray': [0, 2, 4],
-                'line-emmisive-strength': 1
+                'line-emissive-strength': 1.5
             }
         });
+
+          map.addLayer({
+            'id': 'nodes',
+            'type': 'symbol',
+            'source': 'nodes',
+            'layout': {
+                'icon-image': 'node-icon',
+                'icon-size': 0.3,
+                'icon-allow-overlap': true
+            }
+        });
+        
+// --- Listen for messages to update the map without reloading ---
+window.addEventListener('message', (event) => {
+  // Optional: restrict origins for security (replace with your Streamlit origin)
+  // if (event.origin !== 'http://localhost:8501') return;
+
+  const msg = event.data;
+  if (!msg || typeof msg !== 'object') return;
+
+  // Update edges
+  if (msg.type === 'reloadEdges' && msg.data) {
+    try {
+      const newEdges = (typeof msg.data === 'string') ? JSON.parse(msg.data) : msg.data;
+      const src = map.getSource('edges');
+      if (src) src.setData(newEdges);
+    } catch (e) {
+      console.error('Failed to parse edges payload', e);
+    }
+  }
+
+  // Update nodes
+  if (msg.type === 'reloadNodes' && msg.data) {
+    try {
+      const newNodes = (typeof msg.data === 'string') ? JSON.parse(msg.data) : msg.data;
+      const src = map.getSource('nodes');
+      if (src) src.setData(newNodes);
+    } catch (e) {
+      console.error('Failed to parse nodes payload', e);
+    }
+  }
+});
+
+        // --- Hover tooltip for edges ---
+        const popup = new mapboxgl.Popup({
+          closeButton: false,
+          closeOnClick: false
+        });
+
+        const popupNode = new mapboxgl.Popup({
+          closeButton: false,
+          closeOnClick: false
+        });
+
+        // change cursor when hovering lines
+        map.on('mouseenter', 'edges-foreground', () => {
+          map.getCanvas().style.cursor = 'pointer';
+        });
+        map.on('mouseleave', 'edges-foreground', () => {
+          map.getCanvas().style.cursor = '';
+          popup.remove();
+        });
+
+        // show tooltip following the mouse
+        map.on('mousemove', 'edges-foreground', (e) => {
+          const f = e.features && e.features[0];
+          if (!f) return;
+          const content =
+            f.properties.tooltip ||
+            `${f.properties.flow_type || ''}: ${f.properties.from_id || ''} → ${f.properties.to_id || ''}`;
+          popup.setLngLat(e.lngLat).setHTML(content).addTo(map);
+        });
+
+        // ------- HOVER TOOLTIP FOR NODES -------
+        map.on('mouseenter', 'nodes', () => {
+          map.getCanvas().style.cursor = 'pointer';
+        });
+        map.on('mouseleave', 'nodes', () => {
+          map.getCanvas().style.cursor = '';
+          popupNode.remove();
+        });
+
+        map.on('mousemove', 'nodes', (e) => {
+          const f = e.features && e.features[0];
+          if (!f) return;
+          const content =
+            f.properties.tooltip ||
+            `Name: ${f.properties.name || ''}`;
+          popupNode.setLngLat(e.lngLat).setHTML(content).addTo(map);
+        });
+
 
         // ------- ANIMATE THE DASHED LINE -------
 
@@ -146,7 +236,7 @@ body { margin: 0; padding: 0; }
 
             if (newStep !== step) {
                 map.setPaintProperty(
-                    'line-dashed',
+                    'edges-foreground',
                     'line-dasharray',
                     dashArraySequence[step]
                 );
@@ -155,6 +245,38 @@ body { margin: 0; padding: 0; }
 
             // Request the next frame of the animation.
             requestAnimationFrame(animateDashArray);
+
+
+            // --- Pause/Play control ---
+            const btn = document.getElementById('pause');
+            let paused = false;
+            let rafId = null;
+
+            btn.addEventListener('click', () => {
+              paused = !paused;
+              btn.classList.toggle('pause', paused); // swaps label via CSS
+              if (!paused) {
+                // resume
+                rafId = requestAnimationFrame(animateDashArray);
+              } else if (rafId) {
+                // pause
+                cancelAnimationFrame(rafId);
+                rafId = null;
+              }
+            });
+
+            // update animate function according to pause button
+            function animateDashArray(timestamp) {
+              if (paused) return; // do nothing while paused
+
+              const newStep = parseInt((timestamp / 50) % dashArraySequence.length);
+              if (newStep !== step) {
+                map.setPaintProperty('edges-foreground', 'line-dasharray', dashArraySequence[step]);
+                step = newStep;
+              }
+
+              rafId = requestAnimationFrame(animateDashArray);
+            }
         }
 
         // start the animation
@@ -162,6 +284,14 @@ body { margin: 0; padding: 0; }
     
     });
 </script>
+<!-- dynamic info label -->
+<div id="energyLabel"
+     style="position:absolute;top:10px;right:10px;
+            background:rgba(0,0,0,0.6);color:white;
+            padding:6px 10px;border-radius:6px;
+            font-size:14px;">
+  Source: __ENERGY_SOURCE__
+</div>
 
 </body>
 </html>
