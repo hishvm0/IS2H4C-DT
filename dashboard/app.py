@@ -9,8 +9,7 @@ import pydeck as pdk
 import geopandas as gpd
 import streamlit.components.v1 as components
 from shapely.geometry import LineString
-
-
+import json
 
 
 # =======================
@@ -328,6 +327,13 @@ def load_map_data():
 
     # --- Load flow data and attach coordinates ---
     df_flows = pd.read_csv("../map/data/flows.csv")
+
+    for c in ("from_id", "to_id", "flow_type"):  # remove the crematoria flow (for now)
+        df_flows[c] = df_flows[c].astype(str).str.strip()
+
+    mask = df_flows["from_id"].eq("ELEC-01") & df_flows["to_id"].eq("CREM-01")
+    df_flows = df_flows[~mask]
+
     src = gdf_nodes.rename(columns={"id": "from_id", "lon": "from_lon", "lat": "from_lat"})[
         ["from_id", "from_lon", "from_lat"]
     ]
@@ -335,6 +341,7 @@ def load_map_data():
         ["to_id", "to_lon", "to_lat"]
     ]
     df_flows = df_flows.merge(src, on="from_id", how="left").merge(dst, on="to_id", how="left")
+
 
     # --- Assign colors by flow type ---
     COLOR_BY_TYPE = {
@@ -555,19 +562,44 @@ with col2:
     
     with open("../map/map_test.html", 'r', encoding="utf-8") as f:
         mapbox_html = f.read()
-        
+    with open("../map/data/elec_to_houses.geojson", "r", encoding="utf-8") as f:
+        pipe = json.load(f)
     nodes , edges = load_map_data()
     print(edges) 
-    
+
     nodes_json = nodes.to_json()
     edges_json = edges.to_json()
-        
+
+    # Pipeline value assigning
+    h2_total = hydrogen_kg_year  # already computed in your app
+
+    def ensure_fc(g):
+        if g.get("type") == "FeatureCollection":
+            return g
+        # wrap a single feature/geometry as a FeatureCollection
+        if g.get("type") in ("Feature", "LineString", "MultiLineString"):
+            feat = g if g["type"] == "Feature" else {"type": "Feature", "properties": {}, "geometry": g}
+            return {"type": "FeatureCollection", "features": [feat]}
+        return {"type": "FeatureCollection", "features": []}
+
+    fc = ensure_fc(pipe)
+
+    for feat in fc.get("features", []):
+        props = feat.setdefault("properties", {})
+        # attach model-driven properties
+        props["value"] = float(h2_total)  # numeric for width scaling
+        props["unit"] = "kg/yr"
+        props["tooltip"] = f"H₂ to houses | {h2_total:,.0f} kg/yr"
+
+    pipeline_json = json.dumps(fc)
+
+
     mapbox_html = mapbox_html.replace("__NODES__", nodes_json)
     mapbox_html = mapbox_html.replace("__EDGES__", edges_json)
-
+    mapbox_html = mapbox_html.replace("__PIPELINE__", pipeline_json)
     mapbox_html = mapbox_html.replace("__ENERGY_SOURCE__", str(energy_source))
 
-    components.html(mapbox_html, height=600)
+    components.html(mapbox_html, height=900)
 
 
 
