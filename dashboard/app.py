@@ -59,7 +59,7 @@ header[data-testid="stHeader"] { background: transparent; }
 # =======================
 # System definition and datasets used in this prototype.
 ELECTROLYZER_KW = 70                      # Electrolyser rated power
-SEC = 48                              # Specific energy consumption (kWh per kg H₂)
+SEC = 48                                  # Specific energy consumption (kWh per kg H₂)
 LHV_H2 = 33.3                             # Lower heating value of hydrogen (kWh/kg)
 EMISSION_FACTOR_GRID = 0.388              # Dutch grid CO₂ intensity (kg CO₂/kWh)
 
