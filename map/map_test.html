@@ -26,8 +26,10 @@ body { margin: 0; padding: 0; }
         content: 'Play';
     }
 </style>
-  <script id="nodes-data" type="application/json">__NODES__</script>
-  <script id="edges-data" type="application/json">__EDGES__</script>
+    <script id="nodes-data" type="application/json">__NODES__</script>
+    <script id="edges-data" type="application/json">__EDGES__</script>
+    <script id="pipe-data" type="application/json">__PIPELINE__</script>
+
 
 <div id="map"></div>
 <button id="pause"></button>
@@ -38,6 +40,8 @@ body { margin: 0; padding: 0; }
     // Parse the embedded GeoJSON
     const points = JSON.parse(document.getElementById('nodes-data').textContent);
     const edges = JSON.parse(document.getElementById('edges-data').textContent);
+    const pipeline = JSON.parse(document.getElementById('pipe-data').textContent);
+
 
     const map = new mapboxgl.Map({
         container: 'map',
@@ -111,6 +115,63 @@ body { margin: 0; padding: 0; }
                 'line-dasharray': [0, 2, 4],
                 'line-emissive-strength': 1.5
             }
+        });
+
+        // --- Pipeline source  ---
+        if (!map.getSource('elec_houses')) {
+          map.addSource('elec_houses', {
+            type: 'geojson',
+            data: pipeline   // FeatureCollection or LineString from your geojson.io file
+          });
+        } else {
+          map.getSource('elec_houses').setData(pipeline);
+        }
+
+        map.addLayer({
+          id: 'elec_houses',
+          type: 'line',
+          source: 'elec_houses',
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: {
+            'line-color': '#39FF14',
+            'line-width':  [
+              'interpolate', ['linear'],
+              ['coalesce', ['to-number', ['get', 'value']], 0],
+              0,     2,   // 0 kg/yr → 2 px
+              1000,  3,
+              3000,  6,
+              6000, 10,
+              10000,12
+            ],
+            'line-opacity': 1,
+            'line-dasharray': [0, 2, 4],
+            'line-emissive-strength': 1.5,   // optional glow on dark maps
+          }
+        });
+
+
+        // --- Hover tooltip for the pipeline ---
+        const pipePopup = new mapboxgl.Popup({ closeButton: false, closeOnClick: false });
+
+        map.on('mouseenter', 'elec_houses', () => {
+          map.getCanvas().style.cursor = 'pointer';
+        });
+        map.on('mouseleave', 'elec_houses', () => {
+          map.getCanvas().style.cursor = '';
+          pipePopup.remove();
+        });
+
+        map.on('mousemove', 'elec_houses', (e) => {
+          const f = e.features && e.features[0];
+          if (!f) return;
+
+          // Use a property if your geojson has one (e.g., name/medium/type), else fallback text
+          const label =
+            f.properties?.name ||
+            f.properties?.type ||
+            "Hydrogen pipeline to residential units";
+
+          pipePopup.setLngLat(e.lngLat).setHTML(label).addTo(map);
         });
 
           map.addLayer({
@@ -226,61 +287,44 @@ window.addEventListener('message', (event) => {
         ];
 
         let step = 0;
+        let paused = false;
+        let rafId = null;
 
-        function animateDashArray(timestamp) {
-            // Update line-dasharray using the next value in dashArraySequence. The
-            // divisor in the expression `timestamp / 50` controls the animation speed.
-            const newStep = parseInt(
-                (timestamp / 50) % dashArraySequence.length
-            );
+function animateDashArray(timestamp) {
+  if (paused) return;
 
-            if (newStep !== step) {
-                map.setPaintProperty(
-                    'edges-foreground',
-                    'line-dasharray',
-                    dashArraySequence[step]
-                );
-                step = newStep;
-            }
+  const newStep = parseInt((timestamp / 50) % dashArraySequence.length);
+  if (newStep !== step) {
+    const pattern = dashArraySequence[newStep];
 
-            // Request the next frame of the animation.
-            requestAnimationFrame(animateDashArray);
+    // Update BOTH layers if present
+    if (map.getLayer('edges-foreground')) {
+      map.setPaintProperty('edges-foreground', 'line-dasharray', pattern);
+    }
+    if (map.getLayer('elec_houses')) {
+      map.setPaintProperty('elec_houses', 'line-dasharray', pattern);
+    }
+    step = newStep;
+  }
+  rafId = requestAnimationFrame(animateDashArray);
+}
 
+// Pause/Play control (single, global)
+const btn = document.getElementById('pause');
+btn.addEventListener('click', () => {
+  paused = !paused;
+  btn.classList.toggle('pause', paused); // CSS flips label Play/Pause
+  if (!paused) {
+    if (!rafId) rafId = requestAnimationFrame(animateDashArray);
+  } else if (rafId) {
+    cancelAnimationFrame(rafId);
+    rafId = null;
+  }
+});
 
-            // --- Pause/Play control ---
-            const btn = document.getElementById('pause');
-            let paused = false;
-            let rafId = null;
+// Start animation initially
+rafId = requestAnimationFrame(animateDashArray);
 
-            btn.addEventListener('click', () => {
-              paused = !paused;
-              btn.classList.toggle('pause', paused); // swaps label via CSS
-              if (!paused) {
-                // resume
-                rafId = requestAnimationFrame(animateDashArray);
-              } else if (rafId) {
-                // pause
-                cancelAnimationFrame(rafId);
-                rafId = null;
-              }
-            });
-
-            // update animate function according to pause button
-            function animateDashArray(timestamp) {
-              if (paused) return; // do nothing while paused
-
-              const newStep = parseInt((timestamp / 50) % dashArraySequence.length);
-              if (newStep !== step) {
-                map.setPaintProperty('edges-foreground', 'line-dasharray', dashArraySequence[step]);
-                step = newStep;
-              }
-
-              rafId = requestAnimationFrame(animateDashArray);
-            }
-        }
-
-        // start the animation
-        animateDashArray(0);
     
     });
 </script>
