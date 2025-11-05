@@ -116,6 +116,66 @@ body { margin: 0; padding: 0; }
                 'line-emissive-strength': 1.5
             }
         });
+        // --- O2 overlay (parallel offset) ---
+        map.addLayer({
+          id: 'edges-O2-fg-offset',
+          type: 'line',
+          source: 'edges',
+          filter: ['==', ['get','flow_type'], 'O2'],
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: {
+            'line-color': ['get','color'],
+            'line-width': ['coalesce', ['to-number', ['get','value']], 2],
+            'line-dasharray': [0, 2, 4],
+            'line-emissive-strength': 1.5,
+            'line-offset': 12   // big enough to SEE the separation; tune later
+          }
+        });
+
+        // --- H2O overlay (parallel offset) ---
+        map.addLayer({
+          id: 'edges-H2O-fg-offset',
+          type: 'line',
+          source: 'edges',
+          filter: ['==', ['get','flow_type'], 'H2O'],
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: {
+            'line-color': ['get','color'],
+            'line-width': ['coalesce', ['to-number', ['get','value']], 2],
+            'line-dasharray': [0, 2, 4],
+            'line-emissive-strength': 1.5,
+            'line-offset': -10
+          }
+        });
+        // --- O2 halo under the offset layer ---
+        map.addLayer({
+          id: 'edges-O2-bg-offset',
+          type: 'line',
+          source: 'edges',
+          filter: ['==', ['get','flow_type'], 'O2'],
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: {
+            'line-color': 'white',
+            'line-width': ['coalesce', ['to-number', ['get','value']], 2],
+            'line-opacity': 0.6,
+            'line-offset': 10
+          }
+        }, 'edges-O2-fg-offset'); // insert below the foreground
+
+        // --- H2O halo under the offset layer ---
+        map.addLayer({
+          id: 'edges-H2O-bg-offset',
+          type: 'line',
+          source: 'edges',
+          filter: ['==', ['get','flow_type'], 'H2O'],
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: {
+            'line-color': 'white',
+            'line-width': ['coalesce', ['to-number', ['get','value']], 2],
+            'line-opacity': 0.6,
+            'line-offset': -12
+          }
+        }, 'edges-H2O-fg-offset')
 
         // --- Pipeline source  ---
         if (!map.getSource('elec_houses')) {
@@ -184,7 +244,27 @@ body { margin: 0; padding: 0; }
                 'icon-allow-overlap': true
             }
         });
-        
+
+        // --- Hover tooltip for NODES (houses, etc.) ---
+        const nodePopup = new mapboxgl.Popup({ closeButton: false, closeOnClick: false });
+
+        map.on('mouseenter', 'nodes', () => {
+          map.getCanvas().style.cursor = 'pointer';
+        });
+        map.on('mouseleave', 'nodes', () => {
+          map.getCanvas().style.cursor = '';
+          nodePopup.remove();
+        });
+        map.on('mousemove', 'nodes', (e) => {
+          const f = e.features && e.features[0];
+          if (!f) return;
+          const html =
+            f.properties?.tooltip ||
+            `Name: ${f.properties?.name || f.properties?.id || 'Node'}`;
+          nodePopup.setLngLat(e.lngLat).setHTML(html).addTo(map);
+        });
+
+
 // --- Listen for messages to update the map without reloading ---
 window.addEventListener('message', (event) => {
   // Optional: restrict origins for security (replace with your Streamlit origin)
@@ -215,36 +295,29 @@ window.addEventListener('message', (event) => {
     }
   }
 });
+        // --- Hover tooltip for edges (includes O2 & H2O) ---
+ const popup = new mapboxgl.Popup({ closeButton: false, closeOnClick: false });
 
-        // --- Hover tooltip for edges ---
-        const popup = new mapboxgl.Popup({
-          closeButton: false,
-          closeOnClick: false
+        ['edges-foreground', 'edges-O2-fg-offset', 'edges-H2O-fg-offset'].forEach(layerId => {
+          map.on('mouseenter', layerId, () => {
+            map.getCanvas().style.cursor = 'pointer';
+          });
+
+          map.on('mouseleave', layerId, () => {
+            map.getCanvas().style.cursor = '';
+            popup.remove();
+          });
+
+          map.on('mousemove', layerId, (e) => {
+            const f = e.features && e.features[0];
+            if (!f) return;
+            const content =
+              f.properties.tooltip ||
+              `${f.properties.flow_type || ''}: ${f.properties.from_id || ''} → ${f.properties.to_id || ''}`;
+            popup.setLngLat(e.lngLat).setHTML(content).addTo(map);
+          });
         });
 
-        const popupNode = new mapboxgl.Popup({
-          closeButton: false,
-          closeOnClick: false
-        });
-
-        // change cursor when hovering lines
-        map.on('mouseenter', 'edges-foreground', () => {
-          map.getCanvas().style.cursor = 'pointer';
-        });
-        map.on('mouseleave', 'edges-foreground', () => {
-          map.getCanvas().style.cursor = '';
-          popup.remove();
-        });
-
-        // show tooltip following the mouse
-        map.on('mousemove', 'edges-foreground', (e) => {
-          const f = e.features && e.features[0];
-          if (!f) return;
-          const content =
-            f.properties.tooltip ||
-            `${f.properties.flow_type || ''}: ${f.properties.from_id || ''} → ${f.properties.to_id || ''}`;
-          popup.setLngLat(e.lngLat).setHTML(content).addTo(map);
-        });
 
         // ------- HOVER TOOLTIP FOR NODES -------
         map.on('mouseenter', 'nodes', () => {
@@ -297,13 +370,19 @@ function animateDashArray(timestamp) {
   if (newStep !== step) {
     const pattern = dashArraySequence[newStep];
 
-    // Update BOTH layers if present
-    if (map.getLayer('edges-foreground')) {
-      map.setPaintProperty('edges-foreground', 'line-dasharray', pattern);
-    }
-    if (map.getLayer('elec_houses')) {
-      map.setPaintProperty('elec_houses', 'line-dasharray', pattern);
-    }
+            // Update ALL flow layers if present
+        if (map.getLayer('edges-foreground')) {
+          map.setPaintProperty('edges-foreground', 'line-dasharray', pattern);
+        }
+        if (map.getLayer('edges-O2-fg-offset')) {
+          map.setPaintProperty('edges-O2-fg-offset', 'line-dasharray', pattern);
+        }
+        if (map.getLayer('edges-H2O-fg-offset')) {
+          map.setPaintProperty('edges-H2O-fg-offset', 'line-dasharray', pattern);
+        }
+        if (map.getLayer('elec_houses')) {
+          map.setPaintProperty('elec_houses', 'line-dasharray', pattern);
+        }
     step = newStep;
   }
   rafId = requestAnimationFrame(animateDashArray);
