@@ -34,10 +34,31 @@ st.markdown("""
   color:#fafafa;
 }
 
+/* ========== ROOT ========== */
+/* Make the row that wraps the columns fill the viewport */
+.root-row {
+  display: flex;
+  align-items: stretch;
+  min-height: calc(100vh - 2rem);  /* tweak 2rem if needed */
+}
+
+/* Make each Streamlit column a flex column that stretches */
+.root-row [data-testid="column"] {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Let the first child container in each column stretch */
+.root-row [data-testid="column"] > div {
+  flex: 1 1 auto;
+}
+
+/* ========== SIDEBAR ========== */
+
 /* SIDEBAR LOOK & SCALE */
 [data-testid="stSidebar"] {
   background-color:#40444d;
-  font-size:0.8rem;         /* smaller everything */
+  font-size:1rem;         /* smaller everything */
   padding-left:0.7rem !important;
   padding-right:0.7rem !important;
 }
@@ -183,12 +204,33 @@ html, body, [data-testid="stAppViewContainer"] {
 # =======================
 # CONSTANTS & FIXED DATA
 # =======================
-# System definition and datasets used in this prototype.
-ELECTROLYZER_KW = 70                      # Electrolyser rated power
-SEC = 48                                  # Specific energy consumption (kWh per kg H₂)
-LHV_H2 = 33.3                             # Lower heating value of hydrogen (kWh/kg)
-EMISSION_FACTOR_GRID = 0.388              # Dutch grid CO₂ intensity (kg CO₂/kWh)
+DATA = pd.read_csv("./data_constants.csv", index_col=0)
 
+# System definition and datasets used in this prototype.
+ELECTROLYZER_KW = DATA.loc["el_rated_power_kw", "value"]                      # Electrolyser rated power
+SEC = DATA.loc["sec_kwh_per_kg", "value"]                                  # Specific energy consumption (kWh per kg H₂)
+LHV_H2 = DATA.loc["lhv_h2_kwh_per_kg", "value"]                              # Lower heating value of hydrogen (kWh/kg)
+EMISSION_FACTOR_GRID = DATA.loc["em_factor_grid_kg_per_kwh", "value"]              # Dutch grid CO₂ intensity (kg CO₂/kWh)
+
+
+# Installed capacities and annual demand used by the model.
+pv_capacity_kw = DATA.loc["pv_capacity_kw", "value"]
+wind_capacity_kw = DATA.loc["wind_capacity_kw", "value"]
+electrolyzer_eff_kwh_per_kg = 48      # Conversion used for monthly H₂ charts
+annual_h2_demand = DATA.loc["annual_h2_demand_kg", "value"] # kg/year (from facilities dataset)
+
+enable_battery = True  # keep battery logic ON
+
+BASE_CAP_KWH = DATA.loc["battery_cap_baseline_kwh", "value"]
+
+bat_cap_kwh = BASE_CAP_KWH
+
+ETA_CHG = DATA.loc["battery_eta_charge", "value"]
+ETA_DIS = DATA.loc["battery_eta_discharge", "value"]
+
+# =======================
+# MAP DATA LOADING
+# =====================
 
 MAPBOX_KEY = 'pk.eyJ1IjoiY3lnbnVzMjYiLCJhIjoiY2s5Z2MzeWVvMGx3NTNtbzRnbGtsOXl6biJ9.8SLdJuFQzuN-s4OlHbwzLg'
 STUDIO_STYLE ='mapbox://styles/cygnus26/clsei2b92016j01qqfc143six'
@@ -201,6 +243,8 @@ map_viewState = pdk.ViewState(
     bearing=-20
 )
 
+
+
 # Monthly capacity factors (CF) used to scale generation per calendar hour.
 solar_cf = np.array([0.0425, 0.0752, 0.1210, 0.1656, 0.1701, 0.1755,
                      0.1672, 0.1544, 0.1337, 0.0896, 0.0539, 0.0364])
@@ -211,23 +255,7 @@ wind_cf  = np.array([0.3127, 0.3007, 0.1936, 0.2449, 0.1145, 0.1460,
 demand_share_arr = np.array([0.1969, 0.1615, 0.1240, 0.0955, 0.0389, 0.0135,
                              0.0140, 0.0130, 0.0186, 0.0506, 0.1070, 0.1667])
 
-# Installed capacities and annual demand used by the model.
-pv_capacity_kw = 1080
-wind_capacity_kw = 100
-electrolyzer_eff_kwh_per_kg = 48      # Conversion used for monthly H₂ charts
-annual_h2_demand = 4922 # kg/year (from facilities dataset)
 
-enable_battery = True  # keep battery logic ON
-
-BASE_CAP_KWH = 1400
-BASE_ETA_PCT = 95  # both charge and discharge efficiencies
-
-bat_cap_kwh = BASE_CAP_KWH
-eta_chg_pct = BASE_ETA_PCT
-eta_dis_pct = BASE_ETA_PCT
-
-ETA_CHG = eta_chg_pct / 100.0
-ETA_DIS = eta_dis_pct / 100.0
 
 
 # =======================
@@ -246,7 +274,7 @@ with st.sidebar:
     # -------- Energy source --------
     st.markdown("**Energy source feeding the electrolyser**")
     energy_source = st.radio(
-        label="",
+        label="Energy source",
         options=[
             "Wind Only",
             "Solar Only",
@@ -261,7 +289,7 @@ with st.sidebar:
     # -------- Electrolyser schedule --------
     st.markdown("**Electrolyser operating hours**")
     hours_scenario = st.radio(
-        label="",
+        label="Electrolizer operating hours",
         options=[
             "Baseline: 8 h/day on weekdays",
             "Custom",
@@ -403,7 +431,7 @@ df_seasonal = pd.DataFrame({
 })
 
 # --- Waste heat recovery ---
-HEAT_RECOVERY_FRAC = 0.20  # 20% recoverable (Kumar et al., 2025; Lungu et al., 2025)
+HEAT_RECOVERY_FRAC = DATA.loc["heat_recovery_frac", "value"]  # 20% recoverable (Kumar et al., 2025; Lungu et al., 2025)
 monthly_waste_heat_kWh = usable_kwh * HEAT_RECOVERY_FRAC
 annual_waste_heat_kWh = monthly_waste_heat_kWh.sum()
 
@@ -518,12 +546,14 @@ o2_reuse_pct        = "—"
 co2_avoided_per_house = "—"
 
 # Main layout: big map + vertical KPI column
-main_col, right_col = st.columns([6, 2], gap="small")
+
+main_col, right_col = st.columns([6, 2], gap="small", vertical_alignment="top")
 
 # ===== MAIN COLUMN: MAP + BOTTOM KPI ROW =====
 with main_col:
     # --- MAP COMPONENT (center, enlarged) ---
-    with st.container():
+   
+    with st.container(height="stretch"):
         with open("../map/map_test.html", 'r', encoding="utf-8") as f:
             mapbox_html = f.read()
         with open("../map/data/elec_to_houses.geojson", "r", encoding="utf-8") as f:
@@ -558,13 +588,11 @@ with main_col:
         mapbox_html = mapbox_html.replace("__PIPELINE__", pipeline_json)
         mapbox_html = mapbox_html.replace("__ENERGY_SOURCE__", str(energy_source))
 
-        components.html(mapbox_html, height=600)
+        components.html(mapbox_html, height="stretch", scrolling=False)
 
     st.markdown("")  # small spacer
 
     # --- BOTTOM ROW: 5 KPI CARDS (SECONDARY) ---
-    bottom_cols = st.columns(5, gap="small")
-
     bottom_cols = st.columns(5, gap="small")
 
     # 1. Renewable Electricity Yield
@@ -643,9 +671,11 @@ with main_col:
             unsafe_allow_html=True,
         )
 
+   
+
 # ===== RIGHT COLUMN: 5 PRIORITY KPI CARDS (VERTICAL STACK) =====
 with right_col:
-    st.markdown("### ")
+    # st.markdown("### ")
 
     # 1. Hydrogen Production
     st.markdown(
@@ -706,3 +736,5 @@ with right_col:
         """,
         unsafe_allow_html=True,
     )
+
+
