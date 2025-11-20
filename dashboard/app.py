@@ -25,30 +25,157 @@ st.set_page_config(
 # =======================
 # THEME / STYLES
 # =======================
-# Unified dark styling for the entire app + reusable tooltip style for KPI help icons.
 st.markdown("""
 <style>
-  [data-testid="AppViewContainer"], [data-testid="stAppViewContainer"] { background-color:#0e1117; color:#fafafa; }
-  [data-testid="stSidebar"] { background-color:#40444d; }
-  .dashboard-box h4, .dashboard-box li, .dashboard-box p { color:#ffffff !important; }
-  [data-testid="stSidebar"], [data-testid="stSidebar"] * { color:#ffffff !important; }
+/* ========== BASE COLORS ========== */
+[data-testid="AppViewContainer"],
+[data-testid="stAppViewContainer"] {
+  background-color:#0e1117;
+  color:#fafafa;
+}
 
-  .tooltip { position:relative; display:inline-block; cursor:pointer; }
-  .tooltiptext {
-    visibility:hidden; width:260px; background:#333; color:#fff; text-align:left; border-radius:6px; padding:10px;
-    position:absolute; z-index:1; top:100%; left:50%; transform:translateX(-50%);
-    opacity:0; transition:opacity .3s; font-size:13px; box-shadow:0 0 10px rgba(0,0,0,.5);
-  }
-  .tooltip:hover .tooltiptext { visibility:visible; opacity:1; }
-</style>
-""", unsafe_allow_html=True)
-st.markdown("""
-<style>
-[data-testid="stDecoration"] { display: none; }
+/* SIDEBAR LOOK & SCALE */
+[data-testid="stSidebar"] {
+  background-color:#40444d;
+  font-size:0.8rem;         /* smaller everything */
+  padding-left:0.7rem !important;
+  padding-right:0.7rem !important;
+}
 
-header[data-testid="stHeader"] { background: transparent; }
+/* Section titles */
+[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] h3 {
+  font-size:1rem !important;
+  margin-bottom:0.3rem !important;
+}
 
-[data-testid="stAppViewContainer"] > .main { padding-top: 0 !important; margin-top: 0 !important; }
+/* Radio / checkbox text */
+[data-testid="stSidebar"] label {
+  font-size:0.75rem !important;
+  margin-bottom:0.05rem !important;
+}
+
+/* Paragraph text */
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {
+  font-size:0.78rem !important;
+  margin-bottom:0.2rem !important;
+}
+
+/* Reduce all vertical padding inside sidebar */
+[data-testid="stSidebar"] > div {
+  padding-top:0.3rem !important;
+  padding-bottom:0.3rem !important;
+}
+
+/* Shrink expander spacing */
+.streamlit-expanderHeader {
+  font-size:0.8rem !important;
+  padding-top:0.2rem !important;
+  padding-bottom:0.2rem !important;
+}
+
+.streamlit-expanderContent {
+  padding-top:0.2rem !important;
+  padding-bottom:0.2rem !important;
+}
+
+/* Remove large gaps between sidebar elements */
+[data-testid="stSidebar"] .block-container {
+  gap:0 !important;
+}
+
+[data-testid="stSidebar"] > div > div {
+  margin-bottom:0.4rem !important;
+}
+
+.dashboard-box h4,
+.dashboard-box li,
+.dashboard-box p {
+  color:#ffffff !important;
+}
+
+/* ========== TOOLTIP ========== */
+.tooltip { position:relative; display:inline-block; cursor:pointer; }
+.tooltiptext {
+  visibility:hidden;
+  width:260px;
+  background:#333;
+  color:#fff;
+  text-align:left;
+  border-radius:6px;
+  padding:10px;
+  position:absolute;
+  z-index:1;
+  top:100%;
+  left:50%;
+  transform:translateX(-50%);
+  opacity:0;
+  transition:opacity .3s;
+  font-size:13px;
+  box-shadow:0 0 10px rgba(0,0,0,.5);
+}
+.tooltip:hover .tooltiptext { visibility:visible; opacity:1; }
+
+/* ========== LAYOUT / GLOBAL SCALE ========== */
+.block-container {
+  padding-top:2rem !important;
+  margin-top:0 !important;
+}
+
+[data-testid="stAppViewContainer"] > .main {
+  padding-top:0 !important;
+  margin-top:0 !important;
+  max-width:1600px;
+  margin-left:auto;
+  margin-right:auto;
+}
+
+html, body, [data-testid="stAppViewContainer"] {
+  font-size:14px;
+}
+
+/* ========== KPI CARD STYLE ========== */
+.dt-kpi-card {
+  background:#26264d;
+  padding:10px 12px;
+  border-radius:10px;
+  min-height:95px;      /* controls vertical size per card */
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  margin-bottom:8px;    /* spacing between cards */
+}
+.dt-kpi-card h6 {
+  font-size:0.85rem;
+  margin:0 0 4px 0;
+  color:#A3A6F7;
+}
+.dt-kpi-card p {
+  font-size:1.2rem;
+  margin:0;
+  font-weight:bold;
+  color:#ffffff;
+}
+.dt-kpi-card span {
+  font-size:0.8rem;
+  color:#bbbbbb;
+}
+
+/* ========== KPI COLUMN (RIGHT) ========== */
+/* RIGHT KPI COLUMN — natural top alignment */
+.kpi-column {
+  display:flex;
+  flex-direction:column;
+  gap:8px;          /* space between KPI cards */
+  padding-top:0;    /* ensure no top padding */
+  margin-top:0;
+}
+
+/* Keep card spacing uniform */
+.kpi-column .dt-kpi-card {
+  margin-bottom:0;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -88,88 +215,80 @@ demand_share_arr = np.array([0.1969, 0.1615, 0.1240, 0.0955, 0.0389, 0.0135,
 pv_capacity_kw = 1080
 wind_capacity_kw = 100
 electrolyzer_eff_kwh_per_kg = 48      # Conversion used for monthly H₂ charts
-annual_h2_demand = 4922                   # kg/year (from facilities dataset)
+annual_h2_demand = 4922 # kg/year (from facilities dataset)
+
+enable_battery = True  # keep battery logic ON
+
+BASE_CAP_KWH = 1400
+BASE_ETA_PCT = 95  # both charge and discharge efficiencies
+
+bat_cap_kwh = BASE_CAP_KWH
+eta_chg_pct = BASE_ETA_PCT
+eta_dis_pct = BASE_ETA_PCT
+
+ETA_CHG = eta_chg_pct / 100.0
+ETA_DIS = eta_dis_pct / 100.0
+
 
 # =======================
 # SIDEBAR — SCENARIO CONTROLS
 # =======================
+
 with st.sidebar:
-    st.image("https://is2h4c-project.eu/wp-content/uploads/2024/03/Logo-Yifei.png", width=250)
-    st.title("DT Dashboard Prototype")
+    st.image(
+        "https://is2h4c-project.eu/wp-content/uploads/2024/03/Logo-Yifei.png",
+        width=130,
+    )
 
-    # Energy supply selection: for realism, "Solar + Wind (Baseline)" feeds both sources together.
-    st.markdown("### Select an energy source feeding the electrolyser")
-    energy_source = st.radio("", ("Wind Only", "Solar Only", "Energy Mix (Solar + Wind)", "Grid Only"))
+    # Smaller title + no extra spacing text
+    st.markdown("### DT Dashboard Prototype")
 
-    # Operating hours define the electrolyser schedule. Baseline: 8 hours per weekday (Mon–Fri).
+    # -------- Energy source --------
+    st.markdown("**Energy source feeding the electrolyser**")
+    energy_source = st.radio(
+        label="",
+        options=[
+            "Wind Only",
+            "Solar Only",
+            "Energy Mix (Solar + Wind)",
+            "Grid Only",
+        ],
+        index=0,
+    )
+
     st.markdown("---")
-    st.markdown("### Electrolyser operational hours")
-    hours_scenario = st.radio("", ("Baseline: 8 h/day on weekdays", "Custom"))
+
+    # -------- Electrolyser schedule --------
+    st.markdown("**Electrolyser operating hours**")
+    hours_scenario = st.radio(
+        label="",
+        options=[
+            "Baseline: 8 h/day on weekdays",
+            "Custom",
+        ],
+        index=0,
+    )
+
     if hours_scenario == "Custom":
-        op_hours = st.slider("Operating hours per weekday", min_value=1, max_value=24, value=8, step=1)
-        # Apply selected hours (Baseline = 8 h/weekday)
+        op_hours = st.slider(
+            "Hours per weekday",
+            min_value=1,
+            max_value=24,
+            value=8,
+            step=1,
+        )
+    else:
+        op_hours = 8
 
-    op_hours_val = op_hours if (hours_scenario == "Custom") else 8
+    op_hours_val = op_hours
 
     st.markdown("---")
 
-    # --- Storage (renewables buffer) ---
-    with st.expander("Storage (renewables buffer)", expanded=True):
-        enable_battery = st.checkbox(
-            "Enable battery (LFP)", value=True,
-            help="Battery stores surplus solar/wind and releases it during EL hours."
-        )
-
-        # Baseline spec (Danny)
-        BASE_CAP_KWH = 1400
-        BASE_ETA_PCT = 95  # both charge and discharge
-
-        # One-time init so custom values persist when Baseline is toggled off/on
-        if "bat_settings_initialized" not in st.session_state:
-            st.session_state.bat_cap_kwh = BASE_CAP_KWH
-            st.session_state.eta_chg_pct = BASE_ETA_PCT
-            st.session_state.eta_dis_pct = BASE_ETA_PCT
-            st.session_state.bat_settings_initialized = True
-
-        use_baseline_battery = st.checkbox(
-            "Baseline", value=True,
-            help="Sets 1.4 MWh capacity and 95% charge/discharge efficiencies."
-        )
-
-        if use_baseline_battery:
-            # Auto-apply & lock UI
-            bat_cap_kwh = BASE_CAP_KWH
-            eta_chg_pct = BASE_ETA_PCT
-            eta_dis_pct = BASE_ETA_PCT
-
-            st.number_input("Battery capacity (kWh)", min_value=0, value=bat_cap_kwh, step=100, disabled=True)
-            st.slider("Charge efficiency (%)", 70, 100, eta_chg_pct, disabled=True)
-            st.slider("Discharge efficiency (%)", 70, 100, eta_dis_pct, disabled=True)
-
-        else:
-            # Editable; persist user choices
-            bat_cap_kwh = st.number_input(
-                "Battery capacity (kWh)", min_value=0,
-                value=int(st.session_state.bat_cap_kwh), step=50,
-                help="If not using baseline, enter your own capacity."
-            )
-            eta_chg_pct = st.slider(
-                "Charge efficiency (%)", 70, 100,
-                int(st.session_state.eta_chg_pct)
-            )
-            eta_dis_pct = st.slider(
-                "Discharge efficiency (%)", 70, 100,
-                int(st.session_state.eta_dis_pct)
-            )
-
-            # Save to session so it sticks if the user toggles baseline later
-            st.session_state.bat_cap_kwh = bat_cap_kwh
-            st.session_state.eta_chg_pct = eta_chg_pct
-            st.session_state.eta_dis_pct = eta_dis_pct
-
-    # Effective efficiencies for the dispatch logic
-    ETA_CHG = eta_chg_pct / 100.0
-    ETA_DIS = eta_dis_pct / 100.0
+    # (Optional short note instead of huge expander)
+    st.caption(
+        "Battery buffer is currently fixed to the baseline design "
+        "(1.4 MWh, 95% charge/discharge)."
+    )
 
 # =======================
 # TIME BASES FOR CALCULATION
@@ -379,493 +498,211 @@ def load_map_data():
 # =======================
 # LAYOUT: KPIs, MAP, CHARTS
 # =======================
-col1, col2, col3 = st.columns([1.2, 2.6, 1.4], gap="small")
+# =======================
+# LAYOUT: MAP + KPI RING (NEW SKELETON)
+# =======================
 
-# ===== LEFT COLUMN: KPI CARDS =====
-with col1:
-    # KPI 1 — Annual hydrogen production
-    kpi_row1 = st.columns(2, gap="small")
-    with kpi_row1[0]:
-        st.markdown(f"""
-            <div style='background:#26264d; padding:20px 15px 10px 15px; border-radius:10px; margin-bottom:10px;'>
-                <h6 style='color:#A3A6F7; display:flex; align-items:center; gap:6px;'>
-                  Hydrogen Production
-                  <span class="tooltip">&#9432;
-                    <span class="tooltiptext">
-                      Total annual hydrogen produced from all electricity that reached the electrolyser
-                      (renewables first, plus grid if selected).
-                      <br><br>
-                      • Electrolyser: 70 kW<br>
-                      • Operating hours: weekdays only (sidebar)<br>
-                      • SEC: 48 kWh per kg H₂
-                    </span>
-                  </span>
-                </h6>
-                <p style='font-size:1.8rem; color:white; margin:0; font-weight:bold;'>{hydrogen_kg_year:,.0f}</p>
-                <span style='font-size:1rem; color:#bbb;'>kg/year</span>
+# Some aggregate values for the new KPI cards
+total_res_yield_kwh = float(monthly_res_kwh.sum())          # total renewable electricity available
+total_el_input_kwh  = float(annual_total_kwh_to_el)         # electricity that actually reached EL
+total_h2_kg         = float(hydrogen_kg_year)               # already computed above
+total_co2_avoided   = float(co2_avoided_kg)
+total_co2_grid      = float(grid_emitted_co2_kg)
+total_waste_heat    = float(annual_waste_heat_kWh)
+
+# Placeholders for KPIs not implemented yet (to be wired later)
+battery_util_pct    = "—"
+h2_storage_util_pct = "—"
+o2_reuse_kg         = "—"
+o2_reuse_pct        = "—"
+co2_avoided_per_house = "—"
+
+# Main layout: big map + vertical KPI column
+main_col, right_col = st.columns([6, 2], gap="small")
+
+# ===== MAIN COLUMN: MAP + BOTTOM KPI ROW =====
+with main_col:
+    # --- MAP COMPONENT (center, enlarged) ---
+    with st.container():
+        with open("../map/map_test.html", 'r', encoding="utf-8") as f:
+            mapbox_html = f.read()
+        with open("../map/data/elec_to_houses.geojson", "r", encoding="utf-8") as f:
+            pipe = json.load(f)
+        nodes, edges = load_map_data()
+
+        nodes_json = nodes.to_json()
+        edges_json = edges.to_json()
+
+        # Attach model outputs to pipeline feature collection
+        h2_total = total_h2_kg
+
+        def ensure_fc(g):
+            if g.get("type") == "FeatureCollection":
+                return g
+            if g.get("type") in ("Feature", "LineString", "MultiLineString"):
+                feat = g if g["type"] == "Feature" else {"type": "Feature", "properties": {}, "geometry": g}
+                return {"type": "FeatureCollection", "features": [feat]}
+            return {"type": "FeatureCollection", "features": []}
+
+        fc = ensure_fc(pipe)
+        for feat in fc.get("features", []):
+            props = feat.setdefault("properties", {})
+            props["value"] = float(h2_total)
+            props["unit"] = "kg/yr"
+            props["tooltip"] = f"H₂ to houses | {h2_total:,.0f} kg/yr"
+
+        pipeline_json = json.dumps(fc)
+
+        mapbox_html = mapbox_html.replace("__NODES__", nodes_json)
+        mapbox_html = mapbox_html.replace("__EDGES__", edges_json)
+        mapbox_html = mapbox_html.replace("__PIPELINE__", pipeline_json)
+        mapbox_html = mapbox_html.replace("__ENERGY_SOURCE__", str(energy_source))
+
+        components.html(mapbox_html, height=600)
+
+    st.markdown("")  # small spacer
+
+    # --- BOTTOM ROW: 5 KPI CARDS (SECONDARY) ---
+    bottom_cols = st.columns(5, gap="small")
+
+    bottom_cols = st.columns(5, gap="small")
+
+    # 1. Renewable Electricity Yield
+    with bottom_cols[0]:
+        st.markdown(
+            f"""
+            <div class="dt-kpi-card">
+              <h6>Renewable Electricity Yield</h6>
+              <p>{annual_res_kwh_to_el:,.0f}</p>
+              <span>kWh/yr (available RES)</span>
             </div>
-        """, unsafe_allow_html=True)
+            """,
+            unsafe_allow_html=True,
+        )
 
-    # KPI 2 — Dynamic: Emissions (Grid Only) or Avoided (Renewables)
-    with kpi_row1[1]:
-        is_grid_only = (energy_source == "Grid Only")
-        kpi2_title = "CO₂ Emissions (Grid)" if is_grid_only else "CO₂ Emissions Avoided"
-        kpi2_value = grid_emitted_co2_kg if is_grid_only else co2_avoided_kg
-        kpi2_unit = "kg/year"
-
-        # Tooltips tailored to the active mode
-        if is_grid_only:
-            kpi2_help = (
-                "Total CO₂ emitted from running the electrolyser on grid electricity only.\n\n"
-                "Calculated as: (EL setpoint kWh from grid) × (grid CO₂ intensity)."
-            )
-        else:
-            kpi2_help = (
-                "Emissions avoided by using the renewable portion of electricity instead of the Dutch grid.\n\n"
-                "Calculated as: (heat from green H₂) × (grid CO₂ intensity). Grid input does not contribute to avoided CO₂."
-            )
-
-        st.markdown(f"""
-            <div style='background:#26264d; padding:20px 15px 10px 15px; border-radius:10px; margin-bottom:10px;'>
-                <h6 style='color:#A3A6F7; display:flex; align-items:center; gap:6px;'>
-                  {kpi2_title}
-                  <span class="tooltip">&#9432;
-                    <span class="tooltiptext">{kpi2_help}</span>
-                  </span>
-                </h6>
-                <p style='font-size:1.8rem; color:white; margin:0; font-weight:bold;'>{kpi2_value:,.0f}</p>
-                <span style='font-size:1rem; color:#bbb;'>{kpi2_unit}</span>
+    # 2. Recoverable Waste Heat
+    with bottom_cols[1]:
+        st.markdown(
+            f"""
+            <div class="dt-kpi-card">
+              <h6>Recoverable Waste Heat</h6>
+              <p>{annual_waste_heat_kWh:,.0f}</p>
+              <span>kWh/yr (20% of EL input)</span>
             </div>
-        """, unsafe_allow_html=True)
+            """,
+            unsafe_allow_html=True,
+        )
 
-    # KPI 3 — Heat from Green H₂ and coverage illustration
-    kpi_row2 = st.columns(2, gap="small")
-    with kpi_row2[0]:
-        # Example translation from green H₂ to building heat intensity (communication KPI)
-        house_areas = [230, 229, 478, 597]
-        total_area_m2 = sum(house_areas)
-        boiler_efficiency = 0.95
-        demand_A = 75 / boiler_efficiency  # A-rated benchmark, adjusted for boiler efficiency
+    # 3. O₂ Reused (WWTP)
+    with bottom_cols[2]:
 
-        heat_per_m2_green = heat_green_kWh / total_area_m2 if total_area_m2 > 0 else 0
-        coverage_A = (heat_per_m2_green / demand_A) * 100 if demand_A > 0 else 0
+        try:
+            o2_reuse_kg = float(o2_reuse_kg)
+        except:
+            o2_reuse_kg = 0.0
 
-        tooltip_text = f"""
-        Green heat intensity illustration (communication metric):<br>
-        {''.join([f'House {i} ({area} m²): {heat_per_m2_green:,.1f} kWh/m²/yr<br>' for i, area in enumerate(house_areas, start=1)])}
-        ≈ {coverage_A:,.0f}% of an A-rated house demand (assumes 95% boiler efficiency).
-        """
+        try:
+            o2_reuse_pct = float(o2_reuse_pct)
+        except:
+            o2_reuse_pct = 0.0
 
-        st.markdown(f"""
-            <div style='background:#26264d; padding:20px 15px 10px 15px; border-radius:10px; margin-bottom:10px;'>
-                <h6 style='color:#A3A6F7; display:flex; align-items:center; gap:6px;'>
-                  Heat from Green H₂
-                  <span class="tooltip">&#9432;<span class="tooltiptext">{tooltip_text}</span></span>
-                </h6>
-                <p style='font-size:1.8rem; color:white; margin:0; font-weight:bold;'>{heat_green_kWh:,.0f}</p>
-                <span style='font-size:1rem; color:#bbb;'>kWh/year</span>
+        st.markdown(
+            f"""
+            <div class="dt-kpi-card">
+              <h6>O₂ Reused (WWTP)</h6>
+              <p>{o2_reuse_kg:,.0f}</p>
+              <span>kg/yr – {o2_reuse_pct}% of demand </span>
             </div>
-        """, unsafe_allow_html=True)
+            """,
+            unsafe_allow_html=True,
+        )
 
-    # KPI 4 — Seasonal coverage (% of demand met)
-    with kpi_row2[1]:
-        st.markdown(f"""
-            <div style='background:#26264d; padding:20px 15px 10px 15px; border-radius:10px; margin-bottom:10px;'>
-                <h6 style='color:#A3A6F7; display:flex; align-items:center; gap:6px;'>
-                  Seasonal Coverage
-                  <span class="tooltip">&#9432;
-                    <span class="tooltiptext">
-                      Share of annual hydrogen demand that is met by monthly production.
-                      Electrolyser hours limit monthly intake; renewables vary by season.
-                    </span>
-                  </span>
-                </h6>
-                <p style='font-size:1.8rem; color:white; margin:0; font-weight:bold;'>{seasonal_coverage_pct:,.0f}%</p>
-                <p style='font-size:1rem; color:#bbb; margin:0;'>of annual H₂ demand</p>
+    # 4. CO₂ Emissions Avoided (total)
+    with bottom_cols[3]:
+        st.markdown(
+            f"""
+            <div class="dt-kpi-card">
+              <h6>CO₂ Emissions Avoided</h6>
+              <p>{co2_avoided_kg:,.0f}</p>
+              <span>kg CO₂/yr</span>
             </div>
-        """, unsafe_allow_html=True)
-
-    # CO₂ emitted from grid electricity actually used by the EL (kWh → kg)
-    grid_emitted_co2_kg = annual_grid_kwh_to_el * EMISSION_FACTOR_GRID
-
-    # Battery Utilization mini-chart (fixed month order)
-    st.markdown("<h6 style='color:#A3A6F7; margin-top:16px;'>Battery Utilization (SOC over the year)</h6>",
-                unsafe_allow_html=True)
-
-    month_order = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-
-    df_batt = pd.DataFrame({
-        "Month": month_order,
-        "SOC (kWh)": storage_soc_kwh,
-        "Curtailed RES (kWh)": curtailed_kwh,
-        "Charged (kWh)": charged_kwh * ETA_CHG,  # net energy stored
-        "Discharged (kWh)": discharged_kwh  # energy delivered to EL
-    })
-
-    soc_chart = (
-        alt.Chart(df_batt)
-        .mark_area(opacity=0.5)
-        .encode(
-            x=alt.X("Month:N", sort=month_order, axis=alt.Axis(labelColor="white", title=None)),
-            y=alt.Y("SOC (kWh):Q", axis=alt.Axis(labelColor="white", title="State of Charge (kWh)")),
-            tooltip=[
-                alt.Tooltip("Month:N"),
-                alt.Tooltip("SOC (kWh):Q", format=",.0f"),
-                alt.Tooltip("Charged (kWh):Q", format=",.0f", title="Stored this month"),
-                alt.Tooltip("Discharged (kWh):Q", format=",.0f", title="Delivered this month"),
-                alt.Tooltip("Curtailed RES (kWh):Q", format=",.0f")
-            ]
+            """,
+            unsafe_allow_html=True,
         )
-        .properties(width=550, height=230, background="#1E1E2F")
-        .configure_view(stroke=None)
-    )
 
-    st.altair_chart(soc_chart, use_container_width=True)
-
-    # Small readout for supervisors
-    st.caption(
-        f"Peak SOC: {soc_max_kwh:,.0f} kWh | Min SOC: {soc_min_kwh:,.0f} kWh | "
-        f"Curtailed RES: {curtailed_total_kwh:,.0f} kWh | Approx. cycles: {approx_cycles:,.1f}"
-    )
-
-    # Monthly Waste Heat Recovery chart
-    st.markdown("<h6 style='color:#A3A6F7; margin-top:16px;'>Monthly Waste Heat Recovery</h6>", unsafe_allow_html=True)
-
-    df_waste = pd.DataFrame({
-        "Month": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
-        "Recovered Heat (kWh)": monthly_waste_heat_kWh
-    })
-
-    whr_chart = (
-        alt.Chart(df_waste)
-        .mark_bar(color="#FFB347")  # orange-golden bars for heat
-        .encode(
-            x=alt.X("Month:N",
-                    sort=["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
-                    axis=alt.Axis(labelColor="white")),
-            y=alt.Y("Recovered Heat (kWh):Q", axis=alt.Axis(labelColor="white", title="kWh")),
-            tooltip=[alt.Tooltip("Month:N", title="Month"),
-                     alt.Tooltip("Recovered Heat (kWh):Q", format=",.0f")]
+    # 5. CO₂ Avoided per House
+    with bottom_cols[4]:
+        st.markdown(
+            f"""
+            <div class="dt-kpi-card">
+              <h6>CO₂ Avoided per House</h6>
+              <p>—</p>
+              <span>kg CO₂/house·yr </span>
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
-        .properties(width=500, height=250, background="#1E1E2F")
-        .configure_view(stroke=None)
-    )
 
-    st.altair_chart(whr_chart, use_container_width=True)
+# ===== RIGHT COLUMN: 5 PRIORITY KPI CARDS (VERTICAL STACK) =====
+with right_col:
+    st.markdown("### ")
 
-    # Caption
-    st.caption(f"Assumes 20% of electricity delivered to the EL is recoverable as low-temperature heat. "
-               f"Annual total ≈ {annual_waste_heat_kWh:,.0f} kWh (literature: Van der Roest et al. 2023; IEEE 2023).")
-
-# ===== CENTER COLUMN: MAP PLACEHOLDER =====
-with col2:
-    
-    with open("../map/map_test.html", 'r', encoding="utf-8") as f:
-        mapbox_html = f.read()
-    with open("../map/data/elec_to_houses.geojson", "r", encoding="utf-8") as f:
-        pipe = json.load(f)
-    nodes , edges = load_map_data()
-    print(edges) 
-
-    nodes_json = nodes.to_json()
-    edges_json = edges.to_json()
-
-    # Pipeline value assigning
-    h2_total = hydrogen_kg_year  # already computed in your app
-
-    def ensure_fc(g):
-        if g.get("type") == "FeatureCollection":
-            return g
-        # wrap a single feature/geometry as a FeatureCollection
-        if g.get("type") in ("Feature", "LineString", "MultiLineString"):
-            feat = g if g["type"] == "Feature" else {"type": "Feature", "properties": {}, "geometry": g}
-            return {"type": "FeatureCollection", "features": [feat]}
-        return {"type": "FeatureCollection", "features": []}
-
-    fc = ensure_fc(pipe)
-
-    for feat in fc.get("features", []):
-        props = feat.setdefault("properties", {})
-        # attach model-driven properties
-        props["value"] = float(h2_total)  # numeric for width scaling
-        props["unit"] = "kg/yr"
-        props["tooltip"] = f"H₂ to houses | {h2_total:,.0f} kg/yr"
-
-    pipeline_json = json.dumps(fc)
-
-
-    mapbox_html = mapbox_html.replace("__NODES__", nodes_json)
-    mapbox_html = mapbox_html.replace("__EDGES__", edges_json)
-    mapbox_html = mapbox_html.replace("__PIPELINE__", pipeline_json)
-    mapbox_html = mapbox_html.replace("__ENERGY_SOURCE__", str(energy_source))
-
-    components.html(mapbox_html, height=900)
-
-
-
-    # nodes, edges = load_map_data()
-
-    # def load_layers():
-    #     # Placeholder for map layers (e.g., facilities, infrastructure).
-    #     layers = [
-    #         pdk.Layer(
-    #             "ScatterplotLayer",
-    #             data=nodes,
-    #             get_position=["lon", "lat"],
-    #             get_color="[200, 30, 0, 160]",
-    #             auto_highlight=True,
-    #             get_radius=10,
-    #             pickable=True,
-                
-    #         ),
-    #         pdk.Layer(
-    #             "ArcLayer",
-    #             data=edges,
-    #             get_source_position=["from_lon", "from_lat"],
-    #             get_target_position=["to_lon", "to_lat"],
-    #             get_source_color="color",
-    #             get_target_color="color",
-    #             pickable=True,
-    #             auto_highlight=True,
-    #             width_scale=5,
-    #             width_min_pixels=2
-    #         )
-            
-    #         # Add more layers as needed
-            
-    
-            
-    #     ]
-    #     return layers
-    
-    # deck = pdk.Deck(layers=load_layers(), initial_view_state=map_viewState, 
-    #                 tooltip={"text": "{name}"},
-    #                 api_keys={"mapbox": 'pk.eyJ1IjoiaGlzaGFtYWZhc2giLCJhIjoiY21mM3NrcGRlMDAweTJrczNyZzJhdWNyNSJ9.E_YstJ3rUCf1TtkF7_jjoQ'},
-    #                 map_provider="mapbox",
-    #                 map_style="light",
-    #                 )
-    # map_card = st.pydeck_chart(deck, use_container_width=True)
-    
-    # st.markdown("""
-    #     <div style="background-color:#2e2e2e; padding:20px; border-radius:8px; height:600px;
-    #                 display:flex; align-items:center; justify-content:center;">
-    #       <span style="color:#cccccc; font-size:18px;">Map Placeholder</span>
-    #     </div>
-    # """, unsafe_allow_html=True)
-
-# ===== RIGHT COLUMN: CONTEXT CHARTS =====
-with col3:
-    # Line chart: monthly hydrogen production vs. demand (communicates seasonal match/mismatch).
-    month_order = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
-    df_seasonal["Month"] = pd.Categorical(df_seasonal["Month"], categories=month_order, ordered=True)
-    df_seasonal = df_seasonal.sort_values("Month")
-
-    df_melted = df_seasonal.melt(
-        id_vars=["Month"],
-        value_vars=["H₂ Production (kg)", "H₂ Demand (kg)"],
-        var_name="type",
-        value_name="value"
-    )
-    df_melted["Month"] = pd.Categorical(df_melted["Month"], categories=month_order, ordered=True)
-
-    line_chart = (
-        alt.Chart(df_melted)
-        .mark_line(point=alt.OverlayMarkDef(size=90))
-        .encode(
-            x=alt.X("Month:N", sort=None, title="Month",
-                    axis=alt.Axis(labelColor="white", titleColor="white", labelLimit=1000)),
-            y=alt.Y("value:Q", title="Hydrogen (kg)",
-                    axis=alt.Axis(labelColor="white", titleColor="white", labelLimit=1000)),
-            color=alt.Color(
-                "type:N",
-                scale=alt.Scale(domain=["H₂ Production (kg)", "H₂ Demand (kg)"],
-                                range=["#00BFFF", "#FFA07A"]),
-                legend=alt.Legend(orient="bottom", direction="horizontal", title=None,
-                                  labelColor="white", labelLimit=1000,
-                                  symbolStrokeColor="white", symbolSize=220, padding=8)
-            ),
-            tooltip=[alt.Tooltip("Month:N", title="Month"),
-                     alt.Tooltip("type:N", title="Series"),
-                     alt.Tooltip("value:Q", title="H₂ (kg)", format=",.0f")]
-        )
-        .properties(width=550, height=400, background="#1E1E2F",
-                    title=alt.TitleParams(text="Monthly Hydrogen Production vs Demand",
-                                          color="white", fontSize=16, anchor="start"),
-                    padding={"left":0,"right":0,"top":5,"bottom":5})
-        .configure_view(stroke=None)
-    )
-    st.altair_chart(line_chart, use_container_width=False)
-
-    # Storage view: monthly surplus/deficit bars with a state-of-charge line (no-loss abstraction).
-    df_seasonal["H₂ Balance (kg)"] = df_seasonal["H₂ Production (kg)"] - df_seasonal["H₂ Demand (kg)"]
-    df_seasonal["cum_net"] = df_seasonal["H₂ Balance (kg)"].cumsum()
-    s_min, s_max = float(df_seasonal["cum_net"].min()), float(df_seasonal["cum_net"].max())
-    required_capacity_kg = s_max - s_min         # Minimum seasonal storage to avoid curtailment/shortage
-    initial_soc = -s_min                         # Shifts SOC to always stay ≥ 0 in the chart
-    df_seasonal["SOC (kg)"] = df_seasonal["cum_net"] + initial_soc
-
-    df_for_bars = df_seasonal.copy()
-    df_for_bars["Category"] = np.where(df_for_bars["H₂ Balance (kg)"] >= 0, "Surplus", "Deficit")
-
-    color_scale = alt.Scale(domain=["Surplus","Deficit","Storage Level"],
-                            range=["#40E0D0","#FF6B6B","#FFD166"])
-
-    bar_layer = (
-        alt.Chart(df_for_bars).mark_bar().encode(
-            x=alt.X("Month:N", sort=None, title="Month",
-                    axis=alt.Axis(labelColor="white", titleColor="white", labelLimit=1000)),
-            y=alt.Y("H₂ Balance (kg):Q", title="Monthly Surplus / Deficit (kg)",
-                    axis=alt.Axis(labelColor="white", titleColor="white", labelLimit=1000)),
-            color=alt.Color("Category:N", scale=color_scale, title=None,
-                            legend=alt.Legend(orient="bottom", labelColor="white",
-                                              symbolStrokeColor="white", symbolSize=220)),
-            tooltip=[alt.Tooltip("Month:N", title="Month"),
-                     alt.Tooltip("H₂ Balance (kg):Q", format=",.0f", title="Monthly Balance (kg)"),
-                     alt.Tooltip("SOC (kg):Q", format=",.0f", title="SOC after Month (kg)")]
-        )
-    )
-
-    soc_layer = (
-        alt.Chart(df_seasonal)
-        .transform_calculate(Category="'Storage Level'")
-        .mark_line(point=alt.OverlayMarkDef(size=80), strokeWidth=2)
-        .encode(
-            x=alt.X("Month:N", sort=None),
-            y=alt.Y("SOC (kg):Q", title="Storage Level (kg)",
-                    axis=alt.Axis(labelColor="white", titleColor="white")),
-            color=alt.Color("Category:N", scale=color_scale, title=None, legend=None)
-        )
-    )
-
-    storage_chart = (
-        alt.layer(bar_layer, soc_layer)
-        .resolve_scale(y="independent")
-        .properties(
-            width=550, height=400, background="#1E1E2F",
-            title=alt.TitleParams(
-                text=["Hydrogen Storage Operation:", "Monthly Balance & State of Charge"],
-                subtitle=f"Min. seasonal storage (no losses): {required_capacity_kg:,.0f} kg H₂",
-                color="white", subtitleColor="white", fontSize=15, subtitleFontSize=12, anchor="start"
-            ),
-            padding={"left":0,"right":0,"top":5,"bottom":5}
-        ).configure_view(stroke=None)
-    )
-    st.altair_chart(storage_chart, use_container_width=False)
-
-    # ---- O₂ Reuse: Electricity Saved (Circularity Synergy) ----
-    # Calculation: O₂ mass from H₂ production × reuse% × aeration SEC
-    # (Defaults: 30% reuse, 0.5 kWh/kg O₂)
-    o2_reuse_fraction = 0.30
-    aeration_sec = 0.5   # kWh per kg O₂
-    df_seasonal["O₂ mass (kg)"] = df_seasonal["H₂ Production (kg)"] * 8.0
-    df_seasonal["O₂ Saved Elec (kWh)"] = (
-        df_seasonal["O₂ mass (kg)"] * o2_reuse_fraction * aeration_sec
-    )
-
-    o2_saved_total = df_seasonal["O₂ Saved Elec (kWh)"].sum()
-
-    # KPI card above chart
+    # 1. Hydrogen Production
     st.markdown(
         f"""
-        <div style="background-color:#1E1E2F; padding:5px; border-radius:10px; 
-                    text-align:left; color:white; font-size:15px;">
-            <b>O₂ Reuse – Electricity Saved</b><br>
-            {o2_saved_total:,.0f} kWh/yr
+        <div class="dt-kpi-card">
+          <h6>Hydrogen Production</h6>
+          <p>{hydrogen_kg_year:,.0f}</p>
+          <span>kg H₂/yr</span>
         </div>
         """,
-        unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
 
-    # Monthly bar chart for O₂ reuse
-    o2_chart = (
-        alt.Chart(df_seasonal)
-        .mark_bar()
-        .encode(
-            x=alt.X("Month:N", sort=None, title="Month",
-                    axis=alt.Axis(labelColor="white", titleColor="white", labelLimit=1000)),
-            y=alt.Y("O₂ Saved Elec (kWh):Q", title="Electricity Saved (kWh)",
-                    axis=alt.Axis(labelColor="white", titleColor="white", labelLimit=1000)),
-            tooltip=[
-                alt.Tooltip("Month:N", title="Month"),
-                alt.Tooltip("O₂ mass (kg):Q", format=",.0f", title="O₂ Produced (kg)"),
-                alt.Tooltip("O₂ Saved Elec (kWh):Q", format=",.0f", title="Elec Saved (kWh)")
-            ],
-            color=alt.value("#32CD32")
-        )
-        .properties(
-            width=550, height=300, background="#1E1E2F",
-            title=alt.TitleParams(
-                text="Monthly Electricity Saved by O₂ Reuse",
-                color="white", fontSize=16, anchor="start"
-            ),
-            padding={"left":0,"right":0,"top":5,"bottom":5}
-        )
-        .configure_view(stroke=None)
+    # 2. Seasonal Coverage
+    st.markdown(
+        f"""
+        <div class="dt-kpi-card">
+          <h6>Seasonal Coverage</h6>
+          <p>{seasonal_coverage_pct:,.0f}%</p>
+          <span>of annual H₂ demand met</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
-    st.altair_chart(o2_chart, use_container_width=False)
-
-
-    # Tabs for additional context (indicators, scenario details, documentation).
-    tabs = st.tabs(["All Indicators", "Scenario Details", "About"])
-    with tabs[0]:
-        st.write("**Full Indicators Table** will go here.")
-    with tabs[1]:
-        st.write("**Scenario Parameters** are summarised here (Energy Source, Grid backup, Operating hours).")
-        st.write({
-            "Energy source": energy_source,
-            "Hours per weekday": int(op_hours_val),
-            "Total annual EL hours (weekdays only)": int(hours_per_month_weekdays.sum())
-        })
-    with tabs[2]:
-        st.write("**About this prototype**")
-        st.write(
-            "- Pre-implementation assessment of the H₂Hub Twente concept.\n"
-            "- Renewables are calculated on calendar hours (independent of EL schedule).\n"
-            "- Electrolyser intake is capped by power and weekday-only operating hours.\n"
-            "- Storage chart uses a no-loss seasonal abstraction to illustrate required storage volume."
-        )
-
-
-with st.expander("Diagnostics (energy flows)"):
-    month_order = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
-    df_diag = pd.DataFrame({
-        "Month": month_order,
-        "RES avail (kWh)":      monthly_res_kwh,
-        "EL cap (kWh)":         max_monthly_kwh,
-        "Direct to EL (kWh)":   np.minimum(monthly_res_kwh, max_monthly_kwh),
-        "Charge input (kWh)":   charged_kwh,                   # before charge loss
-        "Discharged (kWh)":     discharged_kwh,               # delivered to EL (after loss)
-        "Curtailed (kWh)":      curtailed_kwh,
-        "SOC end (kWh)":        storage_soc_kwh,
-        "Usable to EL (kWh)":   usable_kwh,
-        "H2 prod (kg)":         usable_kwh / 52.5,
-        "H2 demand (kg)":       monthly_h2_demand,
-        "Balance (kg)":         (usable_kwh / 52.5) - monthly_h2_demand
-    })
-    # Simple assertions (printed as text so you can see if any fail)
-    eps = 1e-6
-    res_balance_ok = np.allclose(
-        df_diag["RES avail (kWh)"].values,
-        df_diag["Direct to EL (kWh)"].values + df_diag["Charge input (kWh)"].values + df_diag["Curtailed (kWh)"].values,
-        atol=1e-3
+    # 3. Battery Buffer Utilisation (placeholder for now)
+    st.markdown(
+        f"""
+        <div class="dt-kpi-card">
+          <h6>Battery Utilisation</h6>
+          <p>—</p>
+          <span>% of capacity </span>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
-    el_balance_ok = np.allclose(
-        df_diag["Usable to EL (kWh)"].values,
-        df_diag["Direct to EL (kWh)"].values + df_diag["Discharged (kWh)"].values,
-        atol=1e-3
+
+    # 4. H₂ Storage Utilisation (placeholder)
+    st.markdown(
+        f"""
+        <div class="dt-kpi-card">
+          <h6>H₂ Storage Utilisation</h6>
+          <p>—</p>
+          <span>% of 60 kg storage </span>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
-    st.write(f"RES balance OK: {res_balance_ok} | EL balance OK: {el_balance_ok} | SOC within [0, cap]: {bool((storage_soc_kwh>=-eps).all() and (storage_soc_kwh<=bat_cap_kwh+eps).all())}")
-    st.dataframe(df_diag.style.format({
-        "RES avail (kWh)": "{:,.0f}",
-        "EL cap (kWh)": "{:,.0f}",
-        "Direct to EL (kWh)": "{:,.0f}",
-        "Charge input (kWh)": "{:,.0f}",
-        "Discharged (kWh)": "{:,.0f}",
-        "Curtailed (kWh)": "{:,.0f}",
-        "SOC end (kWh)": "{:,.0f}",
-        "Usable to EL (kWh)": "{:,.0f}",
-        "H2 prod (kg)": "{:,.0f}",
-        "H2 demand (kg)": "{:,.0f}",
-        "Balance (kg)": "{:,.0f}",
-    }), use_container_width=True)
+
+    # 5. CO₂ Emissions (Grid)
+    st.markdown(
+        f"""
+        <div class="dt-kpi-card">
+          <h6>CO₂ Emissions (Grid)</h6>
+          <p>{grid_emitted_co2_kg:,.0f}</p>
+          <span>kg CO₂/yr from grid input</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
