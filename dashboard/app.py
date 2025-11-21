@@ -228,6 +228,23 @@ bat_cap_kwh = BASE_CAP_KWH
 ETA_CHG = DATA.loc["battery_eta_charge", "value"]
 ETA_DIS = DATA.loc["battery_eta_discharge", "value"]
 
+EMISSION_FACTOR_NG = DATA.loc["em_factor_ng_kg_per_kwh", "value"]
+
+BOILER_EFFICIENCY = DATA.loc["boiler_efficiency", "value"]
+A_DEMAND_REF = DATA.loc["a_demand_ref_kwh_per_m2", "value"]
+TOTAL_HEATED_AREA_M2 = DATA.loc["total_heated_area_m2", "value"]
+
+HOUSE_AREAS = [
+    DATA.loc["house1_area_m2", "value"],
+    DATA.loc["house2_area_m2", "value"],
+    DATA.loc["house3_area_m2", "value"],
+    DATA.loc["house4_area_m2", "value"],
+]
+
+H2_STORAGE_CAPACITY_KG = DATA.loc["h2_storage_capacity_kg", "value"]
+O2_PER_KG_H2 = DATA.loc["o2_per_kg_h2", "value"]
+WWTP_O2_DEMAND = DATA.loc["wwtp_o2_demand_annual", "value"]
+
 # =======================
 # MAP DATA LOADING
 # =====================
@@ -287,7 +304,6 @@ with st.sidebar:
     st.markdown("---")
 
     # -------- Electrolyser schedule --------
-    st.markdown("**Electrolyser operating hours**")
     hours_scenario = st.radio(
         label="Electrolizer operating hours",
         options=[
@@ -461,6 +477,70 @@ non_green_heat_kWh  = heat_total_kWh - heat_green_kWh              # Heat attrib
 # CO₂ emitted from grid electricity actually used by the EL (kWh → kg)
 grid_emitted_co2_kg = annual_grid_kwh_to_el * EMISSION_FACTOR_GRID
 
+# =======================
+# O₂ REUSE KPI (WWTP COVERAGE)
+# =======================
+# Total O₂ produced from H₂ electrolysis
+total_o2_from_h2_kg = hydrogen_kg_year * O2_PER_KG_H2
+
+# For now, assume all produced O₂ can be reused up to WWTP demand
+o2_reuse_kg = min(total_o2_from_h2_kg, WWTP_O2_DEMAND)
+
+if WWTP_O2_DEMAND > 0:
+    o2_reuse_pct = (o2_reuse_kg / WWTP_O2_DEMAND) * 100.0
+else:
+    o2_reuse_pct = 0.0
+
+# =======================
+# CO₂ AVOIDED PER HOUSE (AREA-WEIGHTED)
+# =======================
+
+# Total useful heat demand of all houses assuming A-label
+total_heat_demand_kwh = A_DEMAND_REF * TOTAL_HEATED_AREA_M2
+
+# Gas input for that heat demand
+if BOILER_EFFICIENCY > 0:
+    gas_input_kwh = total_heat_demand_kwh / BOILER_EFFICIENCY
+else:
+    gas_input_kwh = 0.0
+
+# Heat that can be substituted using *green* hydrogen
+substituted_heat_kwh = min(heat_green_kWh, total_heat_demand_kwh)
+
+# Total CO₂ avoided compared to natural gas
+co2_avoided_vs_gas_total = substituted_heat_kwh * EMISSION_FACTOR_NG
+
+# Area-weighted CO₂ avoided per m²
+co2_avoided_per_m2 = (
+    co2_avoided_vs_gas_total / TOTAL_HEATED_AREA_M2
+    if TOTAL_HEATED_AREA_M2 > 0 else 0.0
+)
+
+# Per-house CO₂ avoided (area based)
+co2_avoided_per_house_list = [
+    co2_avoided_per_m2 * area for area in HOUSE_AREAS
+]
+
+# Average per-house CO₂ avoided
+if len(co2_avoided_per_house_list) > 0:
+    co2_avoided_per_house_avg = sum(co2_avoided_per_house_list) / len(co2_avoided_per_house_list)
+else:
+    co2_avoided_per_house_avg = 0.0
+
+# Range (for potential explanation tooltip)
+co2_avoided_house_min = min(co2_avoided_per_house_list) if co2_avoided_per_house_list else 0.0
+co2_avoided_house_max = max(co2_avoided_per_house_list) if co2_avoided_per_house_list else 0.0
+
+# =======================
+# BATTERY UTILISATION KPI
+# =======================
+battery_energy_to_el = discharged_kwh.sum()
+
+if annual_total_kwh_to_el > 0:
+    battery_util_pct = 100 * battery_energy_to_el / annual_total_kwh_to_el
+else:
+    battery_util_pct = 0.0
+
 
 # =======================
 # MAP DATA LOADING
@@ -526,9 +606,6 @@ def load_map_data():
 # =======================
 # LAYOUT: KPIs, MAP, CHARTS
 # =======================
-# =======================
-# LAYOUT: MAP + KPI RING (NEW SKELETON)
-# =======================
 
 # Some aggregate values for the new KPI cards
 total_res_yield_kwh = float(monthly_res_kwh.sum())          # total renewable electricity available
@@ -541,8 +618,6 @@ total_waste_heat    = float(annual_waste_heat_kWh)
 # Placeholders for KPIs not implemented yet (to be wired later)
 battery_util_pct    = "—"
 h2_storage_util_pct = "—"
-o2_reuse_kg         = "—"
-o2_reuse_pct        = "—"
 co2_avoided_per_house = "—"
 
 # Main layout: big map + vertical KPI column
@@ -553,7 +628,7 @@ main_col, right_col = st.columns([6, 2], gap="small", vertical_alignment="top")
 with main_col:
     # --- MAP COMPONENT (center, enlarged) ---
    
-    with st.container(height="stretch"):
+    with st.container():
         with open("../map/map_test.html", 'r', encoding="utf-8") as f:
             mapbox_html = f.read()
         with open("../map/data/elec_to_houses.geojson", "r", encoding="utf-8") as f:
@@ -588,23 +663,23 @@ with main_col:
         mapbox_html = mapbox_html.replace("__PIPELINE__", pipeline_json)
         mapbox_html = mapbox_html.replace("__ENERGY_SOURCE__", str(energy_source))
 
-        components.html(mapbox_html, height="stretch", scrolling=False)
+        components.html(mapbox_html, height=600, scrolling=False)
 
     st.markdown("")  # small spacer
 
     # --- BOTTOM ROW: 5 KPI CARDS (SECONDARY) ---
     bottom_cols = st.columns(5, gap="small")
 
-    # 1. Renewable Electricity Yield
+    # 1. Renewable Electricity Yield (from RES, not just what EL uses)
     with bottom_cols[0]:
         st.markdown(
             f"""
-            <div class="dt-kpi-card">
-              <h6>Renewable Electricity Yield</h6>
-              <p>{annual_res_kwh_to_el:,.0f}</p>
-              <span>kWh/yr (available RES)</span>
-            </div>
-            """,
+                <div class="dt-kpi-card">
+                  <h6>Renewable Electricity Yield</h6>
+                  <p>{total_res_yield_kwh:,.0f}</p>
+                  <span>kWh/yr from PV + wind</span>
+                </div>
+                """,
             unsafe_allow_html=True,
         )
 
@@ -612,129 +687,117 @@ with main_col:
     with bottom_cols[1]:
         st.markdown(
             f"""
-            <div class="dt-kpi-card">
-              <h6>Recoverable Waste Heat</h6>
-              <p>{annual_waste_heat_kWh:,.0f}</p>
-              <span>kWh/yr (20% of EL input)</span>
-            </div>
-            """,
+                <div class="dt-kpi-card">
+                  <h6>Recoverable Waste Heat</h6>
+                  <p>{annual_waste_heat_kWh:,.0f}</p>
+                  <span>kWh/yr (20% of EL input)</span>
+                </div>
+                """,
             unsafe_allow_html=True,
         )
 
     # 3. O₂ Reused (WWTP)
     with bottom_cols[2]:
-
-        try:
-            o2_reuse_kg = float(o2_reuse_kg)
-        except:
-            o2_reuse_kg = 0.0
-
-        try:
-            o2_reuse_pct = float(o2_reuse_pct)
-        except:
-            o2_reuse_pct = 0.0
-
         st.markdown(
             f"""
-            <div class="dt-kpi-card">
-              <h6>O₂ Reused (WWTP)</h6>
-              <p>{o2_reuse_kg:,.0f}</p>
-              <span>kg/yr – {o2_reuse_pct}% of demand </span>
-            </div>
-            """,
+                <div class="dt-kpi-card">
+                  <h6>O₂ Reused (WWTP)</h6>
+                  <p>{o2_reuse_kg:,.0f}</p>
+                  <span>kg/yr – {o2_reuse_pct:.3f}% of WWTP demand</span>
+                </div>
+                """,
             unsafe_allow_html=True,
         )
 
-    # 4. CO₂ Emissions Avoided (total)
+    # 4. CO₂ Emissions Avoided (total, vs grid heat for green H₂)
     with bottom_cols[3]:
         st.markdown(
             f"""
-            <div class="dt-kpi-card">
-              <h6>CO₂ Emissions Avoided</h6>
-              <p>{co2_avoided_kg:,.0f}</p>
-              <span>kg CO₂/yr</span>
-            </div>
-            """,
+                <div class="dt-kpi-card">
+                  <h6>CO₂ Emissions Avoided</h6>
+                  <p>{co2_avoided_kg:,.0f}</p>
+                  <span>kg CO₂/yr (green H₂ vs grid)</span>
+                </div>
+                """,
             unsafe_allow_html=True,
         )
 
-    # 5. CO₂ Avoided per House
+    # 5. CO₂ Avoided per House (area-weighted)
     with bottom_cols[4]:
         st.markdown(
             f"""
-            <div class="dt-kpi-card">
-              <h6>CO₂ Avoided per House</h6>
-              <p>—</p>
-              <span>kg CO₂/house·yr </span>
-            </div>
-            """,
+                <div class="dt-kpi-card">
+                  <h6>CO₂ Avoided per House</h6>
+                  <p>{co2_avoided_per_house_avg:,.0f}</p>
+                  <span>kg CO₂/house·yr (A-label, area-weighted)</span>
+                </div>
+                """,
             unsafe_allow_html=True,
         )
 
-   
-
 # ===== RIGHT COLUMN: 5 PRIORITY KPI CARDS (VERTICAL STACK) =====
 with right_col:
-    # st.markdown("### ")
-
     # 1. Hydrogen Production
     st.markdown(
         f"""
-        <div class="dt-kpi-card">
-          <h6>Hydrogen Production</h6>
-          <p>{hydrogen_kg_year:,.0f}</p>
-          <span>kg H₂/yr</span>
-        </div>
-        """,
+            <div class="dt-kpi-card">
+              <h6>Hydrogen Production</h6>
+              <p>{hydrogen_kg_year:,.0f}</p>
+              <span>kg H₂/yr</span>
+            </div>
+            """,
         unsafe_allow_html=True,
     )
 
-    # 2. Seasonal Coverage
+    # 2. Seasonal Coverage of H₂ Demand
     st.markdown(
         f"""
-        <div class="dt-kpi-card">
-          <h6>Seasonal Coverage</h6>
-          <p>{seasonal_coverage_pct:,.0f}%</p>
-          <span>of annual H₂ demand met</span>
-        </div>
-        """,
+            <div class="dt-kpi-card">
+              <h6>Seasonal Coverage</h6>
+              <p>{seasonal_coverage_pct:,.0f}%</p>
+              <span>of annual H₂ demand met</span>
+            </div>
+            """,
         unsafe_allow_html=True,
     )
 
-    # 3. Battery Buffer Utilisation (placeholder for now)
+    # 3. Battery Buffer Utilisation (freeze for now)
+    try:
+        battery_util_pct = float(battery_util_pct)
+    except:
+        battery_util_pct = 0.0
     st.markdown(
         f"""
         <div class="dt-kpi-card">
           <h6>Battery Utilisation</h6>
-          <p>—</p>
-          <span>% of capacity </span>
+          <p>{battery_util_pct:,.0f}%</p>
+          <span>% of EL electricity supplied from battery</span>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # 4. H₂ Storage Utilisation (placeholder)
+    # 4. H₂ Storage Utilisation (freeze for now)
     st.markdown(
         f"""
-        <div class="dt-kpi-card">
-          <h6>H₂ Storage Utilisation</h6>
-          <p>—</p>
-          <span>% of 60 kg storage </span>
-        </div>
-        """,
+            <div class="dt-kpi-card">
+              <h6>H₂ Storage Utilisation</h6>
+              <p>—</p>
+              <span>% of {H2_STORAGE_CAPACITY_KG:.0f} kg storage (to be implemented)</span>
+            </div>
+            """,
         unsafe_allow_html=True,
     )
 
     # 5. CO₂ Emissions (Grid)
     st.markdown(
         f"""
-        <div class="dt-kpi-card">
-          <h6>CO₂ Emissions (Grid)</h6>
-          <p>{grid_emitted_co2_kg:,.0f}</p>
-          <span>kg CO₂/yr from grid input</span>
-        </div>
-        """,
+            <div class="dt-kpi-card">
+              <h6>CO₂ Emissions (Grid)</h6>
+              <p>{grid_emitted_co2_kg:,.0f}</p>
+              <span>kg CO₂/yr from grid input</span>
+            </div>
+            """,
         unsafe_allow_html=True,
     )
-
 
