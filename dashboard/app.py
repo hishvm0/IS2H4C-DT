@@ -23,6 +23,12 @@ st.set_page_config(
 )
 
 # =======================
+# UI STATE
+# =======================
+if "show_battery_diag" not in st.session_state:
+    st.session_state.show_battery_diag = False
+
+# =======================
 # THEME / STYLES
 # =======================
 st.markdown("""
@@ -116,26 +122,50 @@ st.markdown("""
 }
 
 /* ========== TOOLTIP ========== */
-.tooltip { position:relative; display:inline-block; cursor:pointer; }
+/* ---------- TOOLTIP (generic, used in KPI headers) ---------- */
+.tooltip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid #888;
+  font-size: 9px;
+  line-height: 1;
+  margin-left: 6px;
+  cursor: help;
+  z-index: 20;              /* sits above normal card content */
+}
+
 .tooltiptext {
-  visibility:hidden;
-  width:260px;
+  visibility: hidden;
+  max-width: 360px;
   background:#333;
   color:#fff;
   text-align:left;
   border-radius:6px;
-  padding:10px;
+  padding:8px 10px;
   position:absolute;
-  z-index:1;
-  top:100%;
+  bottom:100%;              /* show ABOVE the icon */
   left:50%;
   transform:translateX(-50%);
+  margin-bottom:6px;
   opacity:0;
-  transition:opacity .3s;
-  font-size:13px;
+  transition:opacity .2s;
+  font-size:12px;
+  line-height:1.3;
+  white-space:normal;
+  word-wrap:break-word;
   box-shadow:0 0 10px rgba(0,0,0,.5);
+  z-index:9999;             /* make sure it beats the big number */
 }
-.tooltip:hover .tooltiptext { visibility:visible; opacity:1; }
+
+.tooltip:hover .tooltiptext {
+  visibility: visible;
+  opacity: 1;
+}
 
 /* ========== LAYOUT / GLOBAL SCALE ========== */
 .block-container {
@@ -160,12 +190,16 @@ html, body, [data-testid="stAppViewContainer"] {
   background:#26264d;
   padding:10px 12px;
   border-radius:10px;
-  min-height:95px;      /* controls vertical size per card */
+  min-height:95px;
   display:flex;
   flex-direction:column;
   justify-content:center;
-  margin-bottom:8px;    /* spacing between cards */
+  margin-bottom:8px;
+
+  position: relative;   /* NEW: so tooltip can sit above card */
+  overflow: visible;    /* NEW: don't clip tooltip */
 }
+
 .dt-kpi-card h6 {
   font-size:0.85rem;
   margin:0 0 4px 0;
@@ -196,6 +230,53 @@ html, body, [data-testid="stAppViewContainer"] {
 .kpi-column .dt-kpi-card {
   margin-bottom:0;
 }
+/* ==== Battery KPI: button visually inside the card ==== */
+.battery-card {
+  margin-bottom: 4px;  /* slightly smaller gap under this card */
+}
+
+.battery-button-wrap {
+  margin-top: -4px;      /* pull button up towards the card */
+  padding: 0 12px 4px;   /* align with card padding horizontally */
+}
+
+.battery-button-wrap button {
+  width: 100%;
+  font-size: 0.8rem;
+  border-radius: 8px;
+}
+/* Fix for tooltips inside KPI cards */
+.dt-kpi-card h6 {
+  position: relative;
+  overflow: visible !important;
+}
+
+.dt-kpi-card .tooltip {
+  position: relative;
+  display: inline-block;
+}
+
+.dt-kpi-card .tooltip .tooltiptext {
+  visibility: hidden;
+  opacity: 0;
+  width: 240px;
+  background: #333;
+  color: #fff;
+  border-radius: 6px;
+  padding: 10px;
+  position: absolute;
+  z-index: 99999;                 
+  bottom: -10px;
+  left: 105%;
+  transform: translateY(-50%);
+  transition: opacity 0.2s;
+  white-space: normal;
+}
+
+.dt-kpi-card .tooltip:hover .tooltiptext {
+  visibility: visible;
+  opacity: 1;
+}
 
 </style>
 """, unsafe_allow_html=True)
@@ -220,7 +301,8 @@ electrolyzer_eff_kwh_per_kg = 48      # Conversion used for monthly H₂ charts
 annual_h2_demand = DATA.loc["annual_h2_demand_kg", "value"] # kg/year (from facilities dataset)
 
 enable_battery = True  # keep battery logic ON
-
+PV_ALLOCATION_FACTOR = 0.30  # 30% of installed PV is effectively allocated to H₂ system
+pv_capacity_effective_kw = pv_capacity_kw * PV_ALLOCATION_FACTOR
 BASE_CAP_KWH = DATA.loc["battery_cap_baseline_kwh", "value"]
 
 bat_cap_kwh = BASE_CAP_KWH
@@ -271,9 +353,6 @@ wind_cf  = np.array([0.3127, 0.3007, 0.1936, 0.2449, 0.1145, 0.1460,
 # Monthly distribution of annual hydrogen demand (fractions that sum to 1).
 demand_share_arr = np.array([0.1969, 0.1615, 0.1240, 0.0955, 0.0389, 0.0135,
                              0.0140, 0.0130, 0.0186, 0.0506, 0.1070, 0.1667])
-
-
-
 
 # =======================
 # SIDEBAR — SCENARIO CONTROLS
@@ -328,11 +407,6 @@ with st.sidebar:
 
     st.markdown("---")
 
-    # (Optional short note instead of huge expander)
-    st.caption(
-        "Battery buffer is currently fixed to the baseline design "
-        "(1.4 MWh, 95% charge/discharge)."
-    )
 
 # =======================
 # TIME BASES FOR CALCULATION
@@ -351,7 +425,7 @@ hours_per_month_weekdays = np.array([
 # MONTHLY ENERGY AVAILABLE (DECOUPLED)
 # =======================
 # Renewable electricity is computed over calendar hours (correct physics).
-monthly_solar_kwh_raw = pv_capacity_kw * solar_cf * hours_in_month_calendar
+monthly_solar_kwh_raw = pv_capacity_effective_kw * solar_cf * hours_in_month_calendar
 monthly_wind_kwh_raw  = wind_capacity_kw * wind_cf  * hours_in_month_calendar
 monthly_res_kwh_raw   = monthly_solar_kwh_raw + monthly_wind_kwh_raw
 
@@ -378,6 +452,7 @@ storage_soc_kwh   = np.zeros(12)  # battery end-of-month state of charge
 charged_kwh       = np.zeros(12)  # gross energy sent into storage (before losses)
 discharged_kwh    = np.zeros(12)  # energy delivered from storage to EL (after losses)
 curtailed_kwh     = np.zeros(12)  # surplus renewables we couldn't store
+el_unserved_kwh     = np.zeros(12)  # EL cap that was not served by RES + battery
 
 # Grid Only is a clean counterfactual: storage is bypassed and EL runs at setpoint
 if energy_source == "Grid Only":
@@ -387,16 +462,19 @@ if energy_source == "Grid Only":
     charged_kwh[:] = 0
     discharged_kwh[:] = 0
     curtailed_kwh[:] = 0
+    el_unserved_kwh[:]     = 0
+
 else:
     # Battery bucket model (monthly)
     soc = 0.0  # start at empty; carries through months
     for m in range(12):
-        cap_m = max_monthly_kwh[m]
-        res_m = monthly_res_kwh[m]
+        cap_m = max_monthly_kwh[m]      # EL monthly electricity cap
+        res_m = monthly_res_kwh[m]      # renewable electricity available
 
         # 1) Direct feed from renewables up to EL cap
         direct = min(res_m, cap_m)
         usable = direct
+
 
         # 2) Store any remaining renewables (if battery enabled)
         surplus = max(0.0, res_m - direct)
@@ -422,9 +500,14 @@ else:
                 usable += discharge
                 discharged_kwh[m] = discharge
 
+        # 3b) Whatever wasn’t served even after battery = unserved EL demand
+        el_unserved_kwh[m] = max(0.0, cap_m - usable)
+
         # 4) Record month
         storage_soc_kwh[m] = soc
         usable_kwh[m] = usable
+# Count months where the battery actually discharged to EL
+battery_months_active = int(np.sum(discharged_kwh > 0))
 
 
 # =======================
@@ -446,6 +529,8 @@ df_seasonal = pd.DataFrame({
     "H₂ Balance (kg)": monthly_balance
 })
 
+
+
 # --- Waste heat recovery ---
 HEAT_RECOVERY_FRAC = DATA.loc["heat_recovery_frac", "value"]  # 20% recoverable (Kumar et al., 2025; Lungu et al., 2025)
 monthly_waste_heat_kWh = usable_kwh * HEAT_RECOVERY_FRAC
@@ -465,6 +550,35 @@ curtailed_total_kwh = curtailed_kwh.sum()
 soc_min_kwh = float(storage_soc_kwh.min()) if storage_soc_kwh.size else 0.0
 soc_max_kwh = float(storage_soc_kwh.max()) if storage_soc_kwh.size else 0.0
 approx_cycles = (charged_kwh.sum() * ETA_CHG) / max(bat_cap_kwh, 1) if enable_battery and bat_cap_kwh > 0 else 0
+
+# =======================
+# BATTERY DIAGNOSTICS TABLE (MONTHLY)
+# =======================
+month_labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+df_battery_diag = pd.DataFrame({
+    "Month": month_labels,
+    "RES available (kWh)":      monthly_res_kwh,
+    "EL cap (kWh)":             max_monthly_kwh,
+    "EL input to electrolyser (kWh)": usable_kwh,
+    "Battery charge input (kWh)":     charged_kwh,       # energy sent into battery (before losses)
+    "Battery discharge to EL (kWh)":  discharged_kwh,    # energy delivered from battery to EL
+    "RES remainder (kWh)": curtailed_kwh,
+    "Battery SOC end of month (kWh)": storage_soc_kwh,
+    "Unserved EL cap (kWh)":    el_unserved_kwh,
+    "H₂ production (kg)":       monthly_h2_production,
+    "H₂ demand (kg)":           monthly_h2_demand,
+    "H₂ balance (kg)":          monthly_balance,
+})
+# battery summary for the KPI card
+months_with_discharge = int((discharged_kwh > 0).sum())
+months_with_unserved  = int((el_unserved_kwh > 1e-3).sum())
+total_curtailed_mwh   = curtailed_total_kwh / 1000.0  # from kWh to MWh
+
+# Simple diagnostics for the battery view
+battery_months_active = int(np.count_nonzero(charged_kwh + discharged_kwh))
+curtailed_res_MWh_year = curtailed_total_kwh / 1000.0
 
 
 hydrogen_kg_year    = annual_total_kwh_to_el / SEC                 # KPI 1: total hydrogen produced
@@ -492,7 +606,7 @@ else:
     o2_reuse_pct = 0.0
 
 # =======================
-# CO₂ AVOIDED PER HOUSE (AREA-WEIGHTED)
+# CO₂ AVOIDED PER HOUSE
 # =======================
 
 # Total useful heat demand of all houses assuming A-label
@@ -532,7 +646,7 @@ co2_avoided_house_min = min(co2_avoided_per_house_list) if co2_avoided_per_house
 co2_avoided_house_max = max(co2_avoided_per_house_list) if co2_avoided_per_house_list else 0.0
 
 # =======================
-# BATTERY UTILISATION KPI
+# BATTERY UTILISATION
 # =======================
 battery_energy_to_el = discharged_kwh.sum()
 
@@ -540,6 +654,78 @@ if annual_total_kwh_to_el > 0:
     battery_util_pct = 100 * battery_energy_to_el / annual_total_kwh_to_el
 else:
     battery_util_pct = 0.0
+
+# =======================
+# H₂ STORAGE MODEL (MONTHLY)
+# =======================
+h2_cap = float(H2_STORAGE_CAPACITY_KG)
+
+# End-of-month SOC
+h2_soc_kg_end = np.zeros(12)      # end-of-month state of charge (kg)
+# Average SOC over the month (for utilisation KPI)
+h2_soc_kg_avg = np.zeros(12)      # average SOC during the month (kg)
+
+h2_stored_kg = np.zeros(12)       # surplus stored each month (kg)
+h2_released_kg = np.zeros(12)     # H₂ taken from storage to cover deficits (kg)
+h2_spill_kg = np.zeros(12)        # surplus that couldn't be stored (kg)
+h2_unmet_kg = np.zeros(12)        # demand that couldn't be met even after storage (kg)
+
+# Start from half-full buffer as a neutral assumption
+soc_h2 = 0.5 * h2_cap
+
+for m in range(12):
+    soc_start = soc_h2           # SOC at start of month
+    bal = float(monthly_balance[m])  # + = surplus, - = deficit
+
+    if bal >= 0:
+        # Surplus month: store up to capacity, spill the rest
+        free_cap = max(h2_cap - soc_h2, 0.0)
+        to_store = min(bal, free_cap)
+        spill = max(bal - to_store, 0.0)
+
+        soc_h2 += to_store
+        h2_stored_kg[m] = to_store
+        h2_spill_kg[m] = spill
+
+    else:
+        # Deficit month: release from storage, track unmet demand
+        deficit = -bal
+        from_store = min(deficit, soc_h2)
+        unmet = max(deficit - from_store, 0.0)
+
+        soc_h2 -= from_store
+        h2_released_kg[m] = from_store
+        h2_unmet_kg[m] = unmet
+
+    # Record end-of-month SOC
+    h2_soc_kg_end[m] = soc_h2
+    # Record average SOC over the month
+    h2_soc_kg_avg[m] = 0.5 * (soc_start + soc_h2)
+
+# Monthly utilisation in % of buffer (based on average SOC)
+if h2_cap > 0:
+    h2_storage_util_pct_by_month = 100.0 * h2_soc_kg_avg / h2_cap
+    h2_storage_util_pct_max = float(np.max(h2_storage_util_pct_by_month))
+    h2_storage_util_pct_min = float(np.min(h2_storage_util_pct_by_month))
+    h2_storage_util_pct_avg = float(np.mean(h2_storage_util_pct_by_month))
+else:
+    h2_storage_util_pct_by_month = np.zeros(12)
+    h2_storage_util_pct_max = 0.0
+    h2_storage_util_pct_min = 0.0
+    h2_storage_util_pct_avg = 0.0
+
+# Identify months with highest and lowest storage utilisation
+month_labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+if len(h2_storage_util_pct_by_month) == 12:
+    idx_max = int(np.argmax(h2_storage_util_pct_by_month))
+    idx_min = int(np.argmin(h2_storage_util_pct_by_month))
+    h2_storage_month_max = month_labels[idx_max]
+    h2_storage_month_min = month_labels[idx_min]
+else:
+    h2_storage_month_max = "-"
+    h2_storage_month_min = "-"
 
 
 # =======================
@@ -615,10 +801,6 @@ total_co2_avoided   = float(co2_avoided_kg)
 total_co2_grid      = float(grid_emitted_co2_kg)
 total_waste_heat    = float(annual_waste_heat_kWh)
 
-# Placeholders for KPIs not implemented yet (to be wired later)
-battery_util_pct    = "—"
-h2_storage_util_pct = "—"
-co2_avoided_per_house = "—"
 
 # Main layout: big map + vertical KPI column
 
@@ -674,12 +856,22 @@ with main_col:
     with bottom_cols[0]:
         st.markdown(
             f"""
-                <div class="dt-kpi-card">
-                  <h6>Renewable Electricity Yield</h6>
-                  <p>{total_res_yield_kwh:,.0f}</p>
-                  <span>kWh/yr from PV + wind</span>
+            <div class="dt-kpi-card">
+                <div class="kpi-header">
+                    <h6>Renewable Electricity Yield
+                        <span class="tooltip">ⓘ
+                            <span class="tooltiptext">
+                                Annual renewable electricity allocated to hydrogen.
+                                Includes wind + 30% of PV (as per project assumption).
+                                This power supplies the EL directly first, then charges the battery.
+                            </span>
+                        </span>
+                    </h6>
                 </div>
-                """,
+                <p>{total_res_yield_kwh:,.0f}</p>
+                <span>kWh/yr from PV + wind (allocated to H₂)</span>
+            </div>
+            """,
             unsafe_allow_html=True,
         )
 
@@ -761,35 +953,39 @@ with right_col:
         unsafe_allow_html=True,
     )
 
-    # 3. Battery Buffer Utilisation (freeze for now)
-    try:
-        battery_util_pct = float(battery_util_pct)
-    except:
-        battery_util_pct = 0.0
+    # 3. H₂ Storage Utilisation
+    if h2_cap > 0:
+        headline_pct = h2_storage_util_pct_avg
+        tooltip_text = (
+            f"Average monthly fill level of the hydrogen buffer over the year. "
+            f"Max: {h2_storage_util_pct_max:.0f}% in {h2_storage_month_max}. "
+            f"Min: {h2_storage_util_pct_min:.0f}% in {h2_storage_month_min}."
+        )
+    else:
+        headline_pct = 0.0
+        tooltip_text = (
+            "Hydrogen storage capacity is set to 0 kg in the current constants, "
+            "so the buffer is not active in this scenario."
+        )
+
     st.markdown(
         f"""
         <div class="dt-kpi-card">
-          <h6>Battery Utilisation</h6>
-          <p>{battery_util_pct:,.0f}%</p>
-          <span>% of EL electricity supplied from battery</span>
+          <h6>
+            H₂ Storage Utilisation
+            <span class="tooltip">
+              ⓘ
+              <span class="tooltiptext">{tooltip_text}</span>
+            </span>
+          </h6>
+          <p>{headline_pct:.0f}%</p>
+          <span>of {H2_STORAGE_CAPACITY_KG:.0f} kg buffer (monthly model)</span>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # 4. H₂ Storage Utilisation (freeze for now)
-    st.markdown(
-        f"""
-            <div class="dt-kpi-card">
-              <h6>H₂ Storage Utilisation</h6>
-              <p>—</p>
-              <span>% of {H2_STORAGE_CAPACITY_KG:.0f} kg storage (to be implemented)</span>
-            </div>
-            """,
-        unsafe_allow_html=True,
-    )
-
-    # 5. CO₂ Emissions (Grid)
+    # 4. CO₂ Emissions (Grid)
     st.markdown(
         f"""
             <div class="dt-kpi-card">
@@ -800,4 +996,117 @@ with right_col:
             """,
         unsafe_allow_html=True,
     )
+
+    # 5. Battery system – diagnostics + button
+    st.markdown("""
+    <div class="dt-kpi-card">
+      <div class="kpi-header">
+        <h6>Battery system <span class="tooltip">ⓘ
+          <span class="tooltiptext">
+            Battery connected to PV + wind. Surplus RES first feeds the electrolyser 
+            up to its cap; any remaining energy charges the battery. In shortages, 
+            the battery can discharge to support EL operation.
+          </span>
+        </span></h6>
+      </div>
+      <p>Diagnostics view</p>
+      <span>Shows monthly battery behaviour</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+    if st.button("View battery flows", key="btn_battery_diag"):
+            st.session_state.show_battery_diag = True
+
+# =======================
+# BATTERY DIAGNOSTICS VIEW
+# =======================
+
+if st.session_state.get("show_battery_diag", False):
+
+    st.markdown("---")
+    st.markdown("### Battery energy flows (diagnostics)")
+    st.caption(
+        "Monthly breakdown of renewable electricity allocated to hydrogen, "
+        "electrolyser cap, energy stored and discharged by the battery, "
+        "renewables used for other site loads, and end-of-month state of charge."
+    )
+
+    # Build monthly table
+    month_labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+    df_battery = pd.DataFrame({
+        "Month": month_labels,
+        "RES available (kWh)": monthly_res_kwh,
+        "EL cap (kWh)": max_monthly_kwh,
+        "Direct to EL (kWh)": np.minimum(monthly_res_kwh, max_monthly_kwh),
+        "Charged to battery (kWh)": charged_kwh,
+        "Discharged from battery (kWh)": discharged_kwh,
+        "RES for other site loads (kWh)": curtailed_kwh,
+        "End-of-month SOC (kWh)": storage_soc_kwh,
+    })
+
+    st.dataframe(
+        df_battery.style.format({
+            "RES available (kWh)": "{:,.0f}",
+            "EL cap (kWh)": "{:,.0f}",
+            "Direct to EL (kWh)": "{:,.0f}",
+            "Charged to battery (kWh)": "{:,.0f}",
+            "Discharged from battery (kWh)": "{:,.0f}",
+            "RES for other site loads (kWh)": "{:,.0f}",
+            "End-of-month SOC (kWh)": "{:,.0f}",
+        }),
+        use_container_width=True,
+    )
+
+    # ---- Battery chart: RES for other loads + SOC (stacked) ----
+    months_order = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+    # Ensure Month is ordered correctly
+    df_battery["Month"] = pd.Categorical(
+        df_battery["Month"],
+        categories=months_order,
+        ordered=True,
+    )
+    df_battery_sorted = df_battery.sort_values("Month")
+
+    # Long format for Altair
+    df_chart = df_battery_sorted[
+        ["Month", "RES for other site loads (kWh)", "End-of-month SOC (kWh)"]
+    ].melt(
+        id_vars="Month",
+        var_name="Metric",
+        value_name="value",
+    )
+
+    # Numeric order so SOC is always stacked at the bottom
+    metric_order = {
+        "End-of-month SOC (kWh)": 0,          # bottom
+        "RES for other site loads (kWh)": 1,  # top
+    }
+    df_chart["order_num"] = df_chart["Metric"].map(metric_order)
+
+    battery_chart = (
+        alt.Chart(df_chart)
+        .mark_bar()
+        .encode(
+            x=alt.X("Month:O", sort=months_order, title="Month"),
+            y=alt.Y("value:Q", stack="zero", title="Energy (kWh)"),
+            color=alt.Color(
+                "Metric:N",
+                # legend order: SOC first, RES second
+                sort=["End-of-month SOC (kWh)", "RES for other site loads (kWh)"],
+            ),
+            # actual stack order controlled by numeric column
+            order=alt.Order("order_num:Q", sort="ascending"),
+            tooltip=["Month", "Metric", alt.Tooltip("value:Q", format=",.0f")],
+        )
+        .properties(height=260)
+    )
+
+    st.altair_chart(battery_chart, use_container_width=True)
+
+    if st.button("Close battery view", key="btn_close_battery_diag"):
+        st.session_state.show_battery_diag = False
 
