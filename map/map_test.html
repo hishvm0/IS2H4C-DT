@@ -25,14 +25,60 @@ body { margin: 0; padding: 0; }
     #pause.pause::after {
         content: 'Play';
     }
+
+.legend {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    background: rgba(0,0,0,0.7);
+    color: white;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-family: sans-serif;
+    font-size: 13px;
+    line-height: 18px;
+    z-index: 999;
+}
+
+.legend h4 {
+    margin: 0 0 6px 0;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.legend-color {
+    width: 16px;
+    height: 16px;
+    margin-right: 8px;
+    border-radius: 3px;
+    display: inline-block;
+}
+
+.legend-icon {
+    width: 16px;
+    height: 16px;
+    margin-right: 6px;
+}
+
+
 </style>
-    <script id="nodes-data" type="application/json">__NODES__</script>
-    <script id="edges-data" type="application/json">__EDGES__</script>
-    <script id="pipe-data" type="application/json">__PIPELINE__</script>
+
+<script id="nodes-data" type="application/json">__NODES__</script>
+<script id="edges-data" type="application/json">__EDGES__</script>
+<script id="pipe-data" type="application/json">__PIPELINE__</script>
 
 
 <div id="map"></div>
 <button id="pause"></button>
+<!-- Empty legend container – JS will fill this -->
+<div id="legend" class="legend"></div>
+
 <script>
 
     mapboxgl.accessToken = 'pk.eyJ1IjoiY3lnbnVzMjYiLCJhIjoiY2s5Z2MzeWVvMGx3NTNtbzRnbGtsOXl6biJ9.8SLdJuFQzuN-s4OlHbwzLg';
@@ -209,6 +255,76 @@ body { margin: 0; padding: 0; }
           }
         });
 
+                // =======================
+        // DYNAMIC LEGEND
+        // =======================
+        const legendEl = document.getElementById('legend');
+        legendEl.innerHTML = '<h4>Legend</h4>';
+
+        // Collect unique flow_type → color pairs from edges GeoJSON
+        const flowColors = {};  // { O2: "#00A2FF", H2O:"#FF4F4F", ... }
+
+        if (edges && edges.features) {
+          edges.features.forEach(f => {
+            if (!f.properties) return;
+            const t = f.properties.flow_type;
+            const c = f.properties.color;
+            console.log('feature type/color:', t, c);
+            if (!t || !c) return;
+            if (!flowColors[t]) {
+              flowColors[t] = c;
+            }
+          });
+        }
+
+        // Add one legend row per flow_type
+        Object.entries(flowColors).forEach(([type, color]) => {
+          const item = document.createElement('div');
+          item.className = 'legend-item';
+
+          const swatch = document.createElement('span');
+          swatch.className = 'legend-color';
+
+            let cssColor;
+            if (Array.isArray(color)) {
+              if (color.length === 3) {
+                cssColor = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+              } else if (color.length === 4) {
+                cssColor = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${color[3]})`;
+              }
+            } else {
+              cssColor = color; // already a string like "#ff00aa" or "red"
+            }
+
+          swatch.style.backgroundColor = cssColor || '#888'; // fallback just in case
+          
+
+          item.appendChild(swatch);
+          item.appendChild(document.createTextNode(` ${type} flow`));
+          legendEl.appendChild(item);
+        });
+
+        // Add pipeline entry (matches elec_houses layer)
+        const pipeItem = document.createElement('div');
+        pipeItem.className = 'legend-item';
+        const pipeSwatch = document.createElement('span');
+        pipeSwatch.className = 'legend-color';
+        pipeSwatch.style.backgroundColor = '#39FF14';  // same as line-color in elec_houses
+        pipeItem.appendChild(pipeSwatch);
+        pipeItem.appendChild(document.createTextNode(' Energy / H₂ pipeline'));
+        legendEl.appendChild(pipeItem);
+
+        // Add node icon entry
+        const nodeItem = document.createElement('div');
+        nodeItem.className = 'legend-item';
+        const icon = new Image(16, 16);
+        icon.src = 'https://img.icons8.com/3d-fluency/94/location.png';
+        icon.className = 'legend-icon';
+        nodeItem.appendChild(icon);
+        nodeItem.appendChild(document.createTextNode(' Node'));
+        legendEl.appendChild(nodeItem);
+
+
 
         // --- Hover tooltip for the pipeline ---
         const pipePopup = new mapboxgl.Popup({ closeButton: false, closeOnClick: false });
@@ -325,7 +441,7 @@ window.addEventListener('message', (event) => {
         });
         map.on('mouseleave', 'nodes', () => {
           map.getCanvas().style.cursor = '';
-          popupNode.remove();
+          NodePopup.remove();
         });
 
         map.on('mousemove', 'nodes', (e) => {
@@ -334,7 +450,7 @@ window.addEventListener('message', (event) => {
           const content =
             f.properties.tooltip ||
             `Name: ${f.properties.name || ''}`;
-          popupNode.setLngLat(e.lngLat).setHTML(content).addTo(map);
+          NodePopup.setLngLat(e.lngLat).setHTML(content).addTo(map);
         });
 
 
