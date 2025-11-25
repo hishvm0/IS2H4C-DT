@@ -729,6 +729,19 @@ else:
 
 
 # =======================
+# LAYOUT: KPIs, MAP, CHARTS
+# =======================
+
+# Some aggregate values for the new KPI cards
+total_res_yield_kwh = float(monthly_res_kwh.sum())          # total renewable electricity available
+total_el_input_kwh  = float(annual_total_kwh_to_el)         # electricity that actually reached EL
+total_h2_kg         = float(hydrogen_kg_year)               # already computed above
+total_co2_avoided   = float(co2_avoided_kg)
+total_co2_grid      = float(grid_emitted_co2_kg)
+total_waste_heat    = float(annual_waste_heat_kWh)
+
+
+# =======================
 # MAP DATA LOADING
 # =====================
 
@@ -754,7 +767,8 @@ def load_map_data():
         ["to_id", "to_lon", "to_lat"]
     ]
     df_flows = df_flows.merge(src, on="from_id", how="left").merge(dst, on="to_id", how="left")
-
+    print(df_flows)
+    df_flows = df_flows.drop_duplicates(subset=["from_id", "to_id", "flow_type"])
 
     # --- Assign colors by flow type ---
     COLOR_BY_TYPE = {
@@ -766,13 +780,13 @@ def load_map_data():
     }
     df_flows["color"] = df_flows["flow_type"].map(COLOR_BY_TYPE)
 
-    # Build a concise tooltip per flow (adjust fields if your CSV differs)
-    df_flows["tooltip"] = (
-            df_flows["flow_type"].astype(str) + ": " +
-            df_flows["from_id"].astype(str) + " → " + df_flows["to_id"].astype(str) +
-            np.where(df_flows.get("value").notna(), " | " + df_flows["value"].astype(str), "") +
-            np.where(df_flows.get("unit").notna(), " " + df_flows["unit"].astype(str), "")
-    )
+    # # Build a concise tooltip per flow (adjust fields if your CSV differs)
+    # df_flows["tooltip"] = (
+    #         df_flows["flow_type"].astype(str) + ": " +
+    #         df_flows["from_id"].astype(str) + " → " + df_flows["to_id"].astype(str) +
+    #         np.where(df_flows.get("value").notna(), " | " + df_flows["value"].astype(str), "") +
+    #         np.where(df_flows.get("unit").notna(), " " + df_flows["unit"].astype(str), "")
+    # )
 
     # --- Create LineString geometry for each edge ---
     gdf_edges = gpd.GeoDataFrame(
@@ -783,23 +797,26 @@ def load_map_data():
         ),
         crs="EPSG:4326",
     )
+    print(gdf_edges)
     
-    gdf_edges["value"] = gdf_edges["value"].apply(lambda x : random.randint(1,10))
+    gdf_edges.loc[(gdf_edges["from_id"] == "WIND-01") & (gdf_edges["to_id"] == "BATTERY-01"), "value"] = 123.45
+    gdf_edges.loc[(gdf_edges["from_id"] == "SOLAR-01") & (gdf_edges["to_id"] == "BATTERY-01"), "value"] = 250
+    gdf_edges.loc[(gdf_edges["from_id"] == "BATTERY-01") & (gdf_edges["to_id"] == "ELEC-01"), "value"] = 123
+    gdf_edges.loc[(gdf_edges["from_id"] == "ELEC-01") & (gdf_edges["to_id"] == "WWTP-01"), "value"] = 123.45
+    gdf_edges.loc[(gdf_edges["from_id"] == "WWTP-01") & (gdf_edges["to_id"] == "ELEC-01"), "value"] = 123.45
+    gdf_edges.loc[(gdf_edges["from_id"] == "ELEC-01") & (gdf_edges["to_id"] == "OFFICE-01"), "value"] = total_waste_heat
+    gdf_edges.loc[(gdf_edges["from_id"] == "ELEC-01") & (gdf_edges["to_id"] == "CREM-01"), "value"] = 200
+    
+    min_val = gdf_edges["value"].min()
+    max_val = gdf_edges["value"].max()
+  
+    # --- Scale values between 1 and 10 for visualization thicknes---
+    gdf_edges["value_scaled"] = 2 + (gdf_edges["value"] - min_val) * (9 / (max_val - min_val))
+    print(gdf_edges)
+    
+    # gdf_edges["value"] = gdf_edges["value"].apply(lambda x : random.randint(1,10))
 
     return gdf_nodes, gdf_edges
-
-
-# =======================
-# LAYOUT: KPIs, MAP, CHARTS
-# =======================
-
-# Some aggregate values for the new KPI cards
-total_res_yield_kwh = float(monthly_res_kwh.sum())          # total renewable electricity available
-total_el_input_kwh  = float(annual_total_kwh_to_el)         # electricity that actually reached EL
-total_h2_kg         = float(hydrogen_kg_year)               # already computed above
-total_co2_avoided   = float(co2_avoided_kg)
-total_co2_grid      = float(grid_emitted_co2_kg)
-total_waste_heat    = float(annual_waste_heat_kWh)
 
 
 # Main layout: big map + vertical KPI column

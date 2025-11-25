@@ -142,7 +142,7 @@ body { margin: 0; padding: 0; }
             },
             'paint': {
                 'line-color': 'white',
-                'line-width': ['get', 'value'],
+                'line-width': ['get', 'value_scaled'],
                 'line-opacity': 0.6
             }
         });
@@ -157,7 +157,7 @@ body { margin: 0; padding: 0; }
             },
             'paint': {
                 'line-color': ['get', 'color'],
-                'line-width': ['get', 'value'],
+                'line-width': ['get', 'value_scaled'],
                 'line-dasharray': [0, 2, 4],
                 'line-emissive-strength': 1.5
             }
@@ -171,7 +171,7 @@ body { margin: 0; padding: 0; }
           layout: { 'line-join': 'round', 'line-cap': 'round' },
           paint: {
             'line-color': ['get','color'],
-            'line-width': ['coalesce', ['to-number', ['get','value']], 2],
+            'line-width': ['coalesce', ['to-number', ['get','value_scaled']], 2],
             'line-dasharray': [0, 2, 4],
             'line-emissive-strength': 1.5,
             'line-offset': 12   // big enough to SEE the separation; tune later
@@ -187,7 +187,7 @@ body { margin: 0; padding: 0; }
           layout: { 'line-join': 'round', 'line-cap': 'round' },
           paint: {
             'line-color': ['get','color'],
-            'line-width': ['coalesce', ['to-number', ['get','value']], 2],
+            'line-width': ['coalesce', ['to-number', ['get','value_scaled']], 2],
             'line-dasharray': [0, 2, 4],
             'line-emissive-strength': 1.5,
             'line-offset': -10
@@ -202,7 +202,7 @@ body { margin: 0; padding: 0; }
           layout: { 'line-join': 'round', 'line-cap': 'round' },
           paint: {
             'line-color': 'white',
-            'line-width': ['coalesce', ['to-number', ['get','value']], 2],
+            'line-width': ['coalesce', ['to-number', ['get','value_scaled']], 2],
             'line-opacity': 0.6,
             'line-offset': 10
           }
@@ -217,7 +217,7 @@ body { margin: 0; padding: 0; }
           layout: { 'line-join': 'round', 'line-cap': 'round' },
           paint: {
             'line-color': 'white',
-            'line-width': ['coalesce', ['to-number', ['get','value']], 2],
+            'line-width': ['coalesce', ['to-number', ['get','value_scaled']], 2],
             'line-opacity': 0.6,
             'line-offset': -12
           }
@@ -326,7 +326,7 @@ body { margin: 0; padding: 0; }
 
 
 
-        // --- Hover tooltip for the pipeline ---
+        // --- Hover tooltip for the GREEN pipeline ---
         const pipePopup = new mapboxgl.Popup({ closeButton: false, closeOnClick: false });
 
         map.on('mouseenter', 'elec_houses', () => {
@@ -359,25 +359,6 @@ body { margin: 0; padding: 0; }
                 'icon-size': 0.3,
                 'icon-allow-overlap': true
             }
-        });
-
-        // --- Hover tooltip for NODES (houses, etc.) ---
-        const nodePopup = new mapboxgl.Popup({ closeButton: false, closeOnClick: false });
-
-        map.on('mouseenter', 'nodes', () => {
-          map.getCanvas().style.cursor = 'pointer';
-        });
-        map.on('mouseleave', 'nodes', () => {
-          map.getCanvas().style.cursor = '';
-          nodePopup.remove();
-        });
-        map.on('mousemove', 'nodes', (e) => {
-          const f = e.features && e.features[0];
-          if (!f) return;
-          const html =
-            f.properties?.tooltip ||
-            `Name: ${f.properties?.name || f.properties?.id || 'Node'}`;
-          nodePopup.setLngLat(e.lngLat).setHTML(html).addTo(map);
         });
 
 
@@ -429,7 +410,8 @@ window.addEventListener('message', (event) => {
             if (!f) return;
             const content =
               f.properties.tooltip ||
-              `${f.properties.flow_type || ''}: ${f.properties.from_id || ''} → ${f.properties.to_id || ''}`;
+              `${f.properties.flow_type || ''}: from ${f.properties.from_id || ''} → to ${f.properties.to_id || ''} 
+              (${f.properties.value?.toLocaleString() || ''} ${f.properties.unit || ''})`;
             popup.setLngLat(e.lngLat).setHTML(content).addTo(map);
           });
         });
@@ -441,7 +423,7 @@ window.addEventListener('message', (event) => {
         });
         map.on('mouseleave', 'nodes', () => {
           map.getCanvas().style.cursor = '';
-          NodePopup.remove();
+          popup.remove();
         });
 
         map.on('mousemove', 'nodes', (e) => {
@@ -450,7 +432,7 @@ window.addEventListener('message', (event) => {
           const content =
             f.properties.tooltip ||
             `Name: ${f.properties.name || ''}`;
-          NodePopup.setLngLat(e.lngLat).setHTML(content).addTo(map);
+          popup.setLngLat(e.lngLat).setHTML(content).addTo(map);
         });
 
 
