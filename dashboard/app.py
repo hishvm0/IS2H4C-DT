@@ -212,7 +212,7 @@ html, body, [data-testid="stAppViewContainer"] {
   color:#ffffff;
 }
 .dt-kpi-card span {
-  font-size:0.8rem;
+  font-size: 1rem;
   color:#bbbbbb;
 }
 
@@ -276,6 +276,10 @@ html, body, [data-testid="stAppViewContainer"] {
 .dt-kpi-card .tooltip:hover .tooltiptext {
   visibility: visible;
   opacity: 1;
+}
+
+.st-dh{
+    width: 100% !important;
 }
 
 </style>
@@ -729,6 +733,27 @@ else:
 
 
 # =======================
+# LAYOUT: KPIs, MAP, CHARTS
+# =======================
+
+# Some aggregate values for the new KPI cards
+total_res_yield_kwh = float(monthly_res_kwh.sum())          # total renewable electricity available
+total_el_input_kwh  = float(annual_total_kwh_to_el)         # electricity that actually reached EL
+total_h2_kg         = float(hydrogen_kg_year)               # already computed above
+total_co2_avoided   = float(co2_avoided_kg)
+total_co2_grid      = float(grid_emitted_co2_kg)
+total_waste_heat    = float(annual_waste_heat_kWh)
+
+
+# =======================
+# WARNING MESSAGES
+# ======================
+if total_co2_avoided > total_co2_grid:
+    st.warning('This is a warning', icon="⚠️")
+
+
+
+# =======================
 # MAP DATA LOADING
 # =====================
 
@@ -754,7 +779,8 @@ def load_map_data():
         ["to_id", "to_lon", "to_lat"]
     ]
     df_flows = df_flows.merge(src, on="from_id", how="left").merge(dst, on="to_id", how="left")
-
+  
+    df_flows = df_flows.drop_duplicates(subset=["from_id", "to_id", "flow_type"])
 
     # --- Assign colors by flow type ---
     COLOR_BY_TYPE = {
@@ -766,13 +792,13 @@ def load_map_data():
     }
     df_flows["color"] = df_flows["flow_type"].map(COLOR_BY_TYPE)
 
-    # Build a concise tooltip per flow (adjust fields if your CSV differs)
-    df_flows["tooltip"] = (
-            df_flows["flow_type"].astype(str) + ": " +
-            df_flows["from_id"].astype(str) + " → " + df_flows["to_id"].astype(str) +
-            np.where(df_flows.get("value").notna(), " | " + df_flows["value"].astype(str), "") +
-            np.where(df_flows.get("unit").notna(), " " + df_flows["unit"].astype(str), "")
-    )
+    # # Build a concise tooltip per flow (adjust fields if your CSV differs)
+    # df_flows["tooltip"] = (
+    #         df_flows["flow_type"].astype(str) + ": " +
+    #         df_flows["from_id"].astype(str) + " → " + df_flows["to_id"].astype(str) +
+    #         np.where(df_flows.get("value").notna(), " | " + df_flows["value"].astype(str), "") +
+    #         np.where(df_flows.get("unit").notna(), " " + df_flows["unit"].astype(str), "")
+    # )
 
     # --- Create LineString geometry for each edge ---
     gdf_edges = gpd.GeoDataFrame(
@@ -783,23 +809,26 @@ def load_map_data():
         ),
         crs="EPSG:4326",
     )
+
     
-    gdf_edges["value"] = gdf_edges["value"].apply(lambda x : random.randint(1,10))
+    gdf_edges.loc[(gdf_edges["from_id"] == "WIND-01") & (gdf_edges["to_id"] == "BATTERY-01"), "value"] = 123.45
+    gdf_edges.loc[(gdf_edges["from_id"] == "SOLAR-01") & (gdf_edges["to_id"] == "BATTERY-01"), "value"] = 250
+    gdf_edges.loc[(gdf_edges["from_id"] == "BATTERY-01") & (gdf_edges["to_id"] == "ELEC-01"), "value"] = 123
+    gdf_edges.loc[(gdf_edges["from_id"] == "ELEC-01") & (gdf_edges["to_id"] == "WWTP-01"), "value"] = 123.45
+    gdf_edges.loc[(gdf_edges["from_id"] == "WWTP-01") & (gdf_edges["to_id"] == "ELEC-01"), "value"] = 123.45
+    gdf_edges.loc[(gdf_edges["from_id"] == "ELEC-01") & (gdf_edges["to_id"] == "OFFICE-01"), "value"] = total_waste_heat
+    gdf_edges.loc[(gdf_edges["from_id"] == "ELEC-01") & (gdf_edges["to_id"] == "CREM-01"), "value"] = 200
+    
+    min_val = gdf_edges["value"].min()
+    max_val = gdf_edges["value"].max()
+  
+    # --- Scale values between 1 and 10 for visualization thicknes---
+    gdf_edges["value_scaled"] = 2 + (gdf_edges["value"] - min_val) * (9 / (max_val - min_val))
+    print(gdf_edges)
+    
+    # gdf_edges["value"] = gdf_edges["value"].apply(lambda x : random.randint(1,10))
 
     return gdf_nodes, gdf_edges
-
-
-# =======================
-# LAYOUT: KPIs, MAP, CHARTS
-# =======================
-
-# Some aggregate values for the new KPI cards
-total_res_yield_kwh = float(monthly_res_kwh.sum())          # total renewable electricity available
-total_el_input_kwh  = float(annual_total_kwh_to_el)         # electricity that actually reached EL
-total_h2_kg         = float(hydrogen_kg_year)               # already computed above
-total_co2_avoided   = float(co2_avoided_kg)
-total_co2_grid      = float(grid_emitted_co2_kg)
-total_waste_heat    = float(annual_waste_heat_kWh)
 
 
 # Main layout: big map + vertical KPI column
@@ -1014,17 +1043,13 @@ with right_col:
     </div>
     """, unsafe_allow_html=True)
 
-    if st.button("View battery flows", key="btn_battery_diag"):
-            st.session_state.show_battery_diag = True
+
 
 # =======================
 # BATTERY DIAGNOSTICS VIEW
 # =======================
-
-if st.session_state.get("show_battery_diag", False):
-
-    st.markdown("---")
-    st.markdown("### Battery energy flows (diagnostics)")
+@st.dialog("Battery energy flows (diagnostics)")
+def show_battery_dialog():
     st.caption(
         "Monthly breakdown of renewable electricity allocated to hydrogen, "
         "electrolyser cap, energy stored and discharged by the battery, "
@@ -1063,7 +1088,6 @@ if st.session_state.get("show_battery_diag", False):
     months_order = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
                     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
-    # Ensure Month is ordered correctly
     df_battery["Month"] = pd.Categorical(
         df_battery["Month"],
         categories=months_order,
@@ -1071,7 +1095,6 @@ if st.session_state.get("show_battery_diag", False):
     )
     df_battery_sorted = df_battery.sort_values("Month")
 
-    # Long format for Altair
     df_chart = df_battery_sorted[
         ["Month", "RES for other site loads (kWh)", "End-of-month SOC (kWh)"]
     ].melt(
@@ -1080,10 +1103,9 @@ if st.session_state.get("show_battery_diag", False):
         value_name="value",
     )
 
-    # Numeric order so SOC is always stacked at the bottom
     metric_order = {
-        "End-of-month SOC (kWh)": 0,          # bottom
-        "RES for other site loads (kWh)": 1,  # top
+        "End-of-month SOC (kWh)": 0,
+        "RES for other site loads (kWh)": 1,
     }
     df_chart["order_num"] = df_chart["Metric"].map(metric_order)
 
@@ -1095,10 +1117,8 @@ if st.session_state.get("show_battery_diag", False):
             y=alt.Y("value:Q", stack="zero", title="Energy (kWh)"),
             color=alt.Color(
                 "Metric:N",
-                # legend order: SOC first, RES second
                 sort=["End-of-month SOC (kWh)", "RES for other site loads (kWh)"],
             ),
-            # actual stack order controlled by numeric column
             order=alt.Order("order_num:Q", sort="ascending"),
             tooltip=["Month", "Metric", alt.Tooltip("value:Q", format=",.0f")],
         )
@@ -1107,6 +1127,13 @@ if st.session_state.get("show_battery_diag", False):
 
     st.altair_chart(battery_chart, use_container_width=True)
 
+    # Close button for the dialog
     if st.button("Close battery view", key="btn_close_battery_diag"):
-        st.session_state.show_battery_diag = False
+        st.rerun()  # rerun app, and since we don't call the dialog again, it closes
 
+
+# =======================
+# OPEN DIALOG BUTTON
+# =======================
+if st.button("View battery flows", key="btn_battery_diag"):
+    show_battery_dialog()

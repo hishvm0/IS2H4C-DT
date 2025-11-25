@@ -6,6 +6,8 @@
 <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
 <link href="https://api.mapbox.com/mapbox-gl-js/v3.15.0/mapbox-gl.css" rel="stylesheet">
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.15.0/mapbox-gl.js"></script>
+<script src="https://unpkg.com/three@0.126.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.126.0/examples/js/loaders/GLTFLoader.js"></script>
 <style>
 body { margin: 0; padding: 0; }
 #map { position: absolute; top: 0; bottom: 0; width: 100%; }
@@ -142,7 +144,7 @@ body { margin: 0; padding: 0; }
             },
             'paint': {
                 'line-color': 'white',
-                'line-width': ['get', 'value'],
+                'line-width': ['get', 'value_scaled'],
                 'line-opacity': 0.6
             }
         });
@@ -157,7 +159,7 @@ body { margin: 0; padding: 0; }
             },
             'paint': {
                 'line-color': ['get', 'color'],
-                'line-width': ['get', 'value'],
+                'line-width': ['get', 'value_scaled'],
                 'line-dasharray': [0, 2, 4],
                 'line-emissive-strength': 1.5
             }
@@ -171,7 +173,7 @@ body { margin: 0; padding: 0; }
           layout: { 'line-join': 'round', 'line-cap': 'round' },
           paint: {
             'line-color': ['get','color'],
-            'line-width': ['coalesce', ['to-number', ['get','value']], 2],
+            'line-width': ['coalesce', ['to-number', ['get','value_scaled']], 2],
             'line-dasharray': [0, 2, 4],
             'line-emissive-strength': 1.5,
             'line-offset': 12   // big enough to SEE the separation; tune later
@@ -187,7 +189,7 @@ body { margin: 0; padding: 0; }
           layout: { 'line-join': 'round', 'line-cap': 'round' },
           paint: {
             'line-color': ['get','color'],
-            'line-width': ['coalesce', ['to-number', ['get','value']], 2],
+            'line-width': ['coalesce', ['to-number', ['get','value_scaled']], 2],
             'line-dasharray': [0, 2, 4],
             'line-emissive-strength': 1.5,
             'line-offset': -10
@@ -202,7 +204,7 @@ body { margin: 0; padding: 0; }
           layout: { 'line-join': 'round', 'line-cap': 'round' },
           paint: {
             'line-color': 'white',
-            'line-width': ['coalesce', ['to-number', ['get','value']], 2],
+            'line-width': ['coalesce', ['to-number', ['get','value_scaled']], 2],
             'line-opacity': 0.6,
             'line-offset': 10
           }
@@ -217,7 +219,7 @@ body { margin: 0; padding: 0; }
           layout: { 'line-join': 'round', 'line-cap': 'round' },
           paint: {
             'line-color': 'white',
-            'line-width': ['coalesce', ['to-number', ['get','value']], 2],
+            'line-width': ['coalesce', ['to-number', ['get','value_scaled']], 2],
             'line-opacity': 0.6,
             'line-offset': -12
           }
@@ -326,7 +328,7 @@ body { margin: 0; padding: 0; }
 
 
 
-        // --- Hover tooltip for the pipeline ---
+        // --- Hover tooltip for the GREEN pipeline ---
         const pipePopup = new mapboxgl.Popup({ closeButton: false, closeOnClick: false });
 
         map.on('mouseenter', 'elec_houses', () => {
@@ -361,24 +363,145 @@ body { margin: 0; padding: 0; }
             }
         });
 
-        // --- Hover tooltip for NODES (houses, etc.) ---
-        const nodePopup = new mapboxgl.Popup({ closeButton: false, closeOnClick: false });
+        // =======================
+        // ADD 3D Turbine
+        // =======================
 
-        map.on('mouseenter', 'nodes', () => {
-          map.getCanvas().style.cursor = 'pointer';
-        });
-        map.on('mouseleave', 'nodes', () => {
-          map.getCanvas().style.cursor = '';
-          nodePopup.remove();
-        });
-        map.on('mousemove', 'nodes', (e) => {
-          const f = e.features && e.features[0];
-          if (!f) return;
-          const html =
-            f.properties?.tooltip ||
-            `Name: ${f.properties?.name || f.properties?.id || 'Node'}`;
-          nodePopup.setLngLat(e.lngLat).setHTML(html).addTo(map);
-        });
+         // 1. Origin of the model (your coordinates)
+        const modelOrigin = [6.648364042976962, 52.36539819191749]; // [lng, lat]
+        const modelAltitude = 0; // meters
+        const modelRotate = [Math.PI / 2, 0, 0]; // rotate from Z-up to Mapbox's coord system
+
+        // Convert to Mercator coordinates
+        const modelAsMercatorCoordinate = mapboxgl.MercatorCoordinate.fromLngLat(
+          modelOrigin,
+          modelAltitude
+        );
+
+        // 2. Transform to place/scale model correctly
+        const modelTransform = {
+          translateX: modelAsMercatorCoordinate.x,
+          translateY: modelAsMercatorCoordinate.y,
+          translateZ: modelAsMercatorCoordinate.z,
+          rotateX: modelRotate[0],
+          rotateY: modelRotate[1],
+          rotateZ: modelRotate[2],
+          // scale from real-world meters → Mercator units
+          scale: modelAsMercatorCoordinate.meterInMercatorCoordinateUnits()
+        };
+
+        const THREE = window.THREE;
+
+        const customLayer = {
+          id: 'gbl-model-layer',   // can be any id
+          type: 'custom',
+          renderingMode: '3d',
+
+          onAdd: function (map, gl) {
+            this.camera = new THREE.Camera();
+            this.scene = new THREE.Scene();
+            this.clock = new THREE.Clock();   // ⏱ for animation
+            this.mixer = null;                // will hold AnimationMixer
+
+            // Lights so you can actually see the model
+            const light1 = new THREE.DirectionalLight(0xffffff);
+            light1.position.set(0, -70, 100).normalize();
+            this.scene.add(light1);
+
+            const light2 = new THREE.DirectionalLight(0xffffff);
+            light2.position.set(0, 70, 100).normalize();
+            this.scene.add(light2);
+
+            const modelUrl =
+            'https://raw.githubusercontent.com/ivan-cardenas/ivan-cardenas.github.io/main/assets/3dModel/animated_wind_turbine.glb';
+
+            // Load your GLB / GLTF model here
+            const loader = new THREE.GLTFLoader();
+            loader.load(
+              modelUrl,
+              (gltf) => {
+                  console.log('Model loaded', gltf);
+                  this.model = gltf.scene;
+                  this.model.scale.set(0.01, 0.01, 0.01);
+                  this.scene.add(this.model);
+
+                  // 🔥 ANIMATION SETUP
+                  if (gltf.animations && gltf.animations.length > 0) {
+                    this.mixer = new THREE.AnimationMixer(this.model);
+
+                    gltf.animations.forEach((clip) => {
+                      const action = this.mixer.clipAction(clip);
+                      action.play();
+                    });
+                  }
+                          },
+                undefined,
+                (error) => {
+                  console.error('Error loading GLB/GLTF:', error);
+                }
+              );
+
+            this.map = map;
+
+            // Use the map's canvas for Three.js
+            this.renderer = new THREE.WebGLRenderer({
+              canvas: map.getCanvas(),
+              context: gl,
+              antialias: true
+            });
+            this.renderer.autoClear = false;
+          },
+
+          render: function (gl, matrix) {
+            const rotationX = new THREE.Matrix4().makeRotationAxis(
+              new THREE.Vector3(1, 0, 0),
+              modelTransform.rotateX
+            );
+            const rotationY = new THREE.Matrix4().makeRotationAxis(
+              new THREE.Vector3(0, 1, 0),
+              modelTransform.rotateY
+            );
+            const rotationZ = new THREE.Matrix4().makeRotationAxis(
+              new THREE.Vector3(0, 0, 1),
+              modelTransform.rotateZ
+            );
+
+            const m = new THREE.Matrix4().fromArray(matrix);
+            const l = new THREE.Matrix4()
+              .makeTranslation(
+                modelTransform.translateX,
+                modelTransform.translateY,
+                modelTransform.translateZ
+              )
+              .scale(
+                new THREE.Vector3(
+                  modelTransform.scale,
+                  -modelTransform.scale,
+                  modelTransform.scale
+                )
+              )
+              .multiply(rotationX)
+              .multiply(rotationY)
+              .multiply(rotationZ);
+
+            this.camera.projectionMatrix = m.multiply(l);
+
+            // 🔄 UPDATE ANIMATION EACH FRAME
+            if (this.mixer && this.clock) {
+              const delta = this.clock.getDelta();
+              this.mixer.update(delta);
+            }
+
+            // Render the model
+            this.renderer.resetState();
+            this.renderer.render(this.scene, this.camera);
+
+            // Tell Mapbox to keep re-rendering
+            this.map.triggerRepaint();
+          }
+        };
+
+        map.addLayer(customLayer);
 
 
 // --- Listen for messages to update the map without reloading ---
@@ -429,7 +552,8 @@ window.addEventListener('message', (event) => {
             if (!f) return;
             const content =
               f.properties.tooltip ||
-              `${f.properties.flow_type || ''}: ${f.properties.from_id || ''} → ${f.properties.to_id || ''}`;
+              `${f.properties.flow_type || ''}: from ${f.properties.from_id || ''} → to ${f.properties.to_id || ''} 
+              (${f.properties.value?.toLocaleString() || ''} ${f.properties.unit || ''})`;
             popup.setLngLat(e.lngLat).setHTML(content).addTo(map);
           });
         });
@@ -441,7 +565,7 @@ window.addEventListener('message', (event) => {
         });
         map.on('mouseleave', 'nodes', () => {
           map.getCanvas().style.cursor = '';
-          NodePopup.remove();
+          popup.remove();
         });
 
         map.on('mousemove', 'nodes', (e) => {
@@ -450,7 +574,7 @@ window.addEventListener('message', (event) => {
           const content =
             f.properties.tooltip ||
             `Name: ${f.properties.name || ''}`;
-          NodePopup.setLngLat(e.lngLat).setHTML(content).addTo(map);
+          popup.setLngLat(e.lngLat).setHTML(content).addTo(map);
         });
 
 

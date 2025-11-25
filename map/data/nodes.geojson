@@ -1,1 +1,295 @@
-{"type":"FeatureCollection","features":[{"type":"Feature","properties":{"fid":6,"id":"BATTERY-01","name":"Battery Buffer","type":"storage"},"geometry":{"coordinates":[6.6482971939360285,52.36602309567385],"type":"Point"}},{"type":"Feature","properties":{"fid":5,"id":"SOLAR-01","name":"Solar Panel","type":"solar"},"geometry":{"coordinates":[6.649536724001674,52.364762552619894],"type":"Point"},"id":1},{"type":"Feature","properties":{"fid":3,"id":"ELEC-01","name":"Electrolyzer","type":"electrolyzer"},"geometry":{"coordinates":[6.648486180348517,52.36609419493059],"type":"Point"}},{"type":"Feature","properties":{"fid":4,"id":"WIND-01","name":"Wind","type":"wind"},"geometry":{"coordinates":[6.648364042976962,52.36539819191749],"type":"Point"}},{"type":"Feature","properties":{"fid":2,"id":"OFFICE-01","name":"Offices","type":"office"},"geometry":{"coordinates":[6.650037400316009,52.364847430853956],"type":"Point"},"id":5},{"type":"Feature","properties":{"fid":1,"id":"WWTP-01","name":"Almelo WWTP","type":"WWTP"},"geometry":{"coordinates":[6.6505139828183975,52.36614980594436],"type":"Point"}},{"type":"Feature","properties":{"fid":7,"id":"AADORP-20","name":"Albardastraat 20 ","type":"community center"},"geometry":{"coordinates":[6.626573982818398,52.37845480594436],"type":"Point"}},{"type":"Feature","properties":{"fid":8,"id":"AADORP-31","name":"Albardastraat 31","type":"house"},"geometry":{"coordinates":[6.628403982818398,52.376992805944354],"type":"Point"}},{"type":"Feature","properties":{"fid":10,"id":"AADORP-46","name":"Albardastraat 46","type":"house"},"geometry":{"coordinates":[6.6319729828183975,52.374301805944356],"type":"Point"}},{"type":"Feature","properties":{"fid":11,"id":"CREM-01","name":"Crematoria","type":"crematorium"},"geometry":{"coordinates":[6.830432982818397,52.19246880594436],"type":"Point"}},{"type":"Feature","properties":{"fid":9,"id":"AADORP-34","name":"Albardastraat 34","type":"house"},"geometry":{"coordinates":[6.628619982818398,52.37681880594436],"type":"Point"}},{"type":"Feature","properties":{"fid":4,"id":"WIND-01","name":"Wind","type":"wind"},"geometry":{"coordinates":[6.648364042976962,52.36539819191749],"type":"Point"}},{"type":"Feature","properties":{"fid":1,"id":"WWTP-01","name":"Almelo WWTP","type":"WWTP"},"geometry":{"coordinates":[6.6505139828183975,52.36614980594436],"type":"Point"}},{"type":"Feature","properties":{"fid":7,"id":"AADORP-20","name":"Albardastraat 20 ","type":"community center"},"geometry":{"coordinates":[6.626573982818398,52.37845480594436],"type":"Point"}},{"type":"Feature","properties":{"fid":8,"id":"AADORP-31","name":"Albardastraat 31","type":"house"},"geometry":{"coordinates":[6.628403982818398,52.376992805944354],"type":"Point"}},{"type":"Feature","properties":{"fid":10,"id":"AADORP-46","name":"Albardastraat 46","type":"house"},"geometry":{"coordinates":[6.6319729828183975,52.374301805944356],"type":"Point"}},{"type":"Feature","properties":{"fid":11,"id":"CREM-01","name":"Crematoria","type":"crematorium"},"geometry":{"coordinates":[6.830432982818397,52.19246880594436],"type":"Point"}},{"type":"Feature","properties":{"fid":9,"id":"AADORP-34","name":"Albardastraat 34","type":"house"},"geometry":{"coordinates":[6.628619982818398,52.37681880594436],"type":"Point"}}]}
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "fid": 6,
+                "id": "BATTERY-01",
+                "name": "Battery Buffer",
+                "type": "storage"
+            },
+            "geometry": {
+                "coordinates": [
+                    6.6482971939360285,
+                    52.36602309567385
+                ],
+                "type": "Point"
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "fid": 5,
+                "id": "SOLAR-01",
+                "name": "Solar Panel",
+                "type": "solar"
+            },
+            "geometry": {
+                "coordinates": [
+                    6.649536724001674,
+                    52.364762552619894
+                ],
+                "type": "Point"
+            },
+            "id": 1
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "fid": 3,
+                "id": "ELEC-01",
+                "name": "Electrolyzer",
+                "type": "electrolyzer"
+            },
+            "geometry": {
+                "coordinates": [
+                    6.648486180348517,
+                    52.36609419493059
+                ],
+                "type": "Point"
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "fid": 4,
+                "id": "WIND-01",
+                "name": "Wind",
+                "type": "wind"
+            },
+            "geometry": {
+                "coordinates": [
+                    6.648364042976962,
+                    52.36539819191749
+                ],
+                "type": "Point"
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "fid": 2,
+                "id": "OFFICE-01",
+                "name": "Offices",
+                "type": "office"
+            },
+            "geometry": {
+                "coordinates": [
+                    6.650037400316009,
+                    52.364847430853956
+                ],
+                "type": "Point"
+            },
+            "id": 5
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "fid": 1,
+                "id": "WWTP-01",
+                "name": "Almelo WWTP",
+                "type": "WWTP"
+            },
+            "geometry": {
+                "coordinates": [
+                    6.6505139828183975,
+                    52.36614980594436
+                ],
+                "type": "Point"
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "fid": 7,
+                "id": "AADORP-20",
+                "name": "Albardastraat 20 ",
+                "type": "community center"
+            },
+            "geometry": {
+                "coordinates": [
+                    6.626573982818398,
+                    52.37845480594436
+                ],
+                "type": "Point"
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "fid": 8,
+                "id": "AADORP-31",
+                "name": "Albardastraat 31",
+                "type": "house"
+            },
+            "geometry": {
+                "coordinates": [
+                    6.628403982818398,
+                    52.376992805944354
+                ],
+                "type": "Point"
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "fid": 10,
+                "id": "AADORP-46",
+                "name": "Albardastraat 46",
+                "type": "house"
+            },
+            "geometry": {
+                "coordinates": [
+                    6.6319729828183975,
+                    52.374301805944356
+                ],
+                "type": "Point"
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "fid": 11,
+                "id": "CREM-01",
+                "name": "Crematoria",
+                "type": "crematorium"
+            },
+            "geometry": {
+                "coordinates": [
+                    6.830432982818397,
+                    52.19246880594436
+                ],
+                "type": "Point"
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "fid": 9,
+                "id": "AADORP-34",
+                "name": "Albardastraat 34",
+                "type": "house"
+            },
+            "geometry": {
+                "coordinates": [
+                    6.628619982818398,
+                    52.37681880594436
+                ],
+                "type": "Point"
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "fid": 4,
+                "id": "WIND-01",
+                "name": "Wind",
+                "type": "wind"
+            },
+            "geometry": {
+                "coordinates": [
+                    6.648364042976962,
+                    52.36539819191749
+                ],
+                "type": "Point"
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "fid": 1,
+                "id": "WWTP-01",
+                "name": "Almelo WWTP",
+                "type": "WWTP"
+            },
+            "geometry": {
+                "coordinates": [
+                    6.6505139828183975,
+                    52.36614980594436
+                ],
+                "type": "Point"
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "fid": 7,
+                "id": "AADORP-20",
+                "name": "Albardastraat 20 ",
+                "type": "community center"
+            },
+            "geometry": {
+                "coordinates": [
+                    6.626573982818398,
+                    52.37845480594436
+                ],
+                "type": "Point"
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "fid": 8,
+                "id": "AADORP-31",
+                "name": "Albardastraat 31",
+                "type": "house"
+            },
+            "geometry": {
+                "coordinates": [
+                    6.628403982818398,
+                    52.376992805944354
+                ],
+                "type": "Point"
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "fid": 10,
+                "id": "AADORP-46",
+                "name": "Albardastraat 46",
+                "type": "house"
+            },
+            "geometry": {
+                "coordinates": [
+                    6.6319729828183975,
+                    52.374301805944356
+                ],
+                "type": "Point"
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "fid": 11,
+                "id": "CREM-01",
+                "name": "Crematoria",
+                "type": "crematorium"
+            },
+            "geometry": {
+                "coordinates": [
+                    6.830432982818397,
+                    52.19246880594436
+                ],
+                "type": "Point"
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "fid": 9,
+                "id": "AADORP-34",
+                "name": "Albardastraat 34",
+                "type": "house"
+            },
+            "geometry": {
+                "coordinates": [
+                    6.628619982818398,
+                    52.37681880594436
+                ],
+                "type": "Point"
+            }
+        }
+    ]
+}
