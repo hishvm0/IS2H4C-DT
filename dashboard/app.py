@@ -779,7 +779,7 @@ def load_map_data():
         ["to_id", "to_lon", "to_lat"]
     ]
     df_flows = df_flows.merge(src, on="from_id", how="left").merge(dst, on="to_id", how="left")
-    print(df_flows)
+  
     df_flows = df_flows.drop_duplicates(subset=["from_id", "to_id", "flow_type"])
 
     # --- Assign colors by flow type ---
@@ -809,7 +809,7 @@ def load_map_data():
         ),
         crs="EPSG:4326",
     )
-    print(gdf_edges)
+
     
     gdf_edges.loc[(gdf_edges["from_id"] == "WIND-01") & (gdf_edges["to_id"] == "BATTERY-01"), "value"] = 123.45
     gdf_edges.loc[(gdf_edges["from_id"] == "SOLAR-01") & (gdf_edges["to_id"] == "BATTERY-01"), "value"] = 250
