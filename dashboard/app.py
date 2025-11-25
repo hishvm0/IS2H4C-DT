@@ -212,7 +212,7 @@ html, body, [data-testid="stAppViewContainer"] {
   color:#ffffff;
 }
 .dt-kpi-card span {
-  font-size:0.8rem;
+  font-size: 1rem;
   color:#bbbbbb;
 }
 
@@ -276,6 +276,10 @@ html, body, [data-testid="stAppViewContainer"] {
 .dt-kpi-card .tooltip:hover .tooltiptext {
   visibility: visible;
   opacity: 1;
+}
+
+.st-dh{
+    width: 100% !important;
 }
 
 </style>
@@ -742,6 +746,14 @@ total_waste_heat    = float(annual_waste_heat_kWh)
 
 
 # =======================
+# WARNING MESSAGES
+# ======================
+if total_co2_avoided > total_co2_grid:
+    st.warning('This is a warning', icon="⚠️")
+
+
+
+# =======================
 # MAP DATA LOADING
 # =====================
 
@@ -1031,17 +1043,13 @@ with right_col:
     </div>
     """, unsafe_allow_html=True)
 
-    if st.button("View battery flows", key="btn_battery_diag"):
-            st.session_state.show_battery_diag = True
+
 
 # =======================
 # BATTERY DIAGNOSTICS VIEW
 # =======================
-
-if st.session_state.get("show_battery_diag", False):
-
-    st.markdown("---")
-    st.markdown("### Battery energy flows (diagnostics)")
+@st.dialog("Battery energy flows (diagnostics)")
+def show_battery_dialog():
     st.caption(
         "Monthly breakdown of renewable electricity allocated to hydrogen, "
         "electrolyser cap, energy stored and discharged by the battery, "
@@ -1080,7 +1088,6 @@ if st.session_state.get("show_battery_diag", False):
     months_order = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
                     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
-    # Ensure Month is ordered correctly
     df_battery["Month"] = pd.Categorical(
         df_battery["Month"],
         categories=months_order,
@@ -1088,7 +1095,6 @@ if st.session_state.get("show_battery_diag", False):
     )
     df_battery_sorted = df_battery.sort_values("Month")
 
-    # Long format for Altair
     df_chart = df_battery_sorted[
         ["Month", "RES for other site loads (kWh)", "End-of-month SOC (kWh)"]
     ].melt(
@@ -1097,10 +1103,9 @@ if st.session_state.get("show_battery_diag", False):
         value_name="value",
     )
 
-    # Numeric order so SOC is always stacked at the bottom
     metric_order = {
-        "End-of-month SOC (kWh)": 0,          # bottom
-        "RES for other site loads (kWh)": 1,  # top
+        "End-of-month SOC (kWh)": 0,
+        "RES for other site loads (kWh)": 1,
     }
     df_chart["order_num"] = df_chart["Metric"].map(metric_order)
 
@@ -1112,10 +1117,8 @@ if st.session_state.get("show_battery_diag", False):
             y=alt.Y("value:Q", stack="zero", title="Energy (kWh)"),
             color=alt.Color(
                 "Metric:N",
-                # legend order: SOC first, RES second
                 sort=["End-of-month SOC (kWh)", "RES for other site loads (kWh)"],
             ),
-            # actual stack order controlled by numeric column
             order=alt.Order("order_num:Q", sort="ascending"),
             tooltip=["Month", "Metric", alt.Tooltip("value:Q", format=",.0f")],
         )
@@ -1124,6 +1127,13 @@ if st.session_state.get("show_battery_diag", False):
 
     st.altair_chart(battery_chart, use_container_width=True)
 
+    # Close button for the dialog
     if st.button("Close battery view", key="btn_close_battery_diag"):
-        st.session_state.show_battery_diag = False
+        st.rerun()  # rerun app, and since we don't call the dialog again, it closes
 
+
+# =======================
+# OPEN DIALOG BUTTON
+# =======================
+if st.button("View battery flows", key="btn_battery_diag"):
+    show_battery_dialog()
