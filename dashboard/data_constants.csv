@@ -1,11 +1,11 @@
 code,name,value,unit
 el_rated_power_kw,Electrolyser rated power,70,kW
-sec_kwh_per_kg,Specific energy consumption (SEC),48,kWh/kg
+sec_kwh_per_kg,Specific energy consumption (SEC),50,kWh/kg
 lhv_h2_kwh_per_kg,Lower heating value of hydrogen,33.3,kWh/kg
 pv_capacity_kw,Installed PV capacity,1080,kWp
 wind_capacity_kw,Installed wind capacity,100,kW
 annual_h2_demand_kg,Annual hydrogen demand (heating),4922,kg/year
-em_factor_grid_kg_per_kwh,Grid CO? emission factor,0.388,kg CO?/kWh
+em_factor_grid_kg_per_kwh,Grid CO? emission factor,0.536,kg CO?/kWh
 em_factor_ng_kg_per_kwh,"CO? emission factor (natural gas, LHV)",0.202,kg CO?/kWh
 boiler_efficiency,Reference boiler efficiency,0.95,_
 a_demand_ref_kwh_per_m2,A-rated reference heat demand,75,kWh/m2-year
@@ -18,6 +18,6 @@ battery_cap_baseline_kwh,Baseline battery capacity,1400,kWh
 battery_eta_charge,Battery charge efficiency,0.95,_
 battery_eta_discharge,Battery discharge efficiency,0.95,_
 h2_storage_capacity_kg,H? storage capacity,60,kg H?
-heat_recovery_frac,Fraction of EL input recoverable as low-T heat,0.2,_
+heat_recovery_frac,Fraction of EL input recoverable as low-T heat,0.30,_
 o2_per_kg_h2,O? produced per kg H?,8,kg O?/kg H?
 wwtp_o2_demand_annual,WWTP annual oxygen demand,7875240,kg O?/year
