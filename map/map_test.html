@@ -400,6 +400,8 @@ body { margin: 0; padding: 0; }
           onAdd: function (map, gl) {
             this.camera = new THREE.Camera();
             this.scene = new THREE.Scene();
+            this.clock = new THREE.Clock();   // ⏱ for animation
+            this.mixer = null;                // will hold AnimationMixer
 
             // Lights so you can actually see the model
             const light1 = new THREE.DirectionalLight(0xffffff);
@@ -410,16 +412,29 @@ body { margin: 0; padding: 0; }
             light2.position.set(0, 70, 100).normalize();
             this.scene.add(light2);
 
+            const modelUrl =
+            'https://raw.githubusercontent.com/ivan-cardenas/ivan-cardenas.github.io/main/assets/3dModel/animated_wind_turbine.glb';
+
             // Load your GLB / GLTF model here
             const loader = new THREE.GLTFLoader();
             loader.load(
-              'https://github.com/hishvm0/IS2H4C-DT/blob/master/map/data/animated_wind_turbine.glb',  // 🔁 put your GLB URL here
+              modelUrl,
               (gltf) => {
                   console.log('Model loaded', gltf);
                   this.model = gltf.scene;
-                  this.model.scale.set(1, 1, 1);
+                  this.model.scale.set(0.01, 0.01, 0.01);
                   this.scene.add(this.model);
-                },
+
+                  // 🔥 ANIMATION SETUP
+                  if (gltf.animations && gltf.animations.length > 0) {
+                    this.mixer = new THREE.AnimationMixer(this.model);
+
+                    gltf.animations.forEach((clip) => {
+                      const action = this.mixer.clipAction(clip);
+                      action.play();
+                    });
+                  }
+                          },
                 undefined,
                 (error) => {
                   console.error('Error loading GLB/GLTF:', error);
@@ -470,6 +485,14 @@ body { margin: 0; padding: 0; }
               .multiply(rotationZ);
 
             this.camera.projectionMatrix = m.multiply(l);
+
+            // 🔄 UPDATE ANIMATION EACH FRAME
+            if (this.mixer && this.clock) {
+              const delta = this.clock.getDelta();
+              this.mixer.update(delta);
+            }
+
+            // Render the model
             this.renderer.resetState();
             this.renderer.render(this.scene, this.camera);
 
