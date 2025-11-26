@@ -128,10 +128,6 @@ st.markdown("""
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  border: 1px solid #888;
   font-size: 9px;
   line-height: 1;
   margin-left: 6px;
@@ -230,7 +226,7 @@ html, body, [data-testid="stAppViewContainer"] {
 .kpi-column .dt-kpi-card {
   margin-bottom:0;
 }
-/* ==== Battery KPI: button visually inside the card ==== */
+/* ==== Battery KPI ==== */
 .battery-card {
   margin-bottom: 4px;  /* slightly smaller gap under this card */
 }
@@ -281,6 +277,17 @@ html, body, [data-testid="stAppViewContainer"] {
 .st-dh{
     width: 100% !important;
 }
+.dt-kpi-red {
+  background:#5b1f2a;   
+}
+
+.dt-kpi-green {
+  background:#1f3b2a;   
+}
+.dt-kpi-amber {
+    background-color: #5a4320; 
+}
+
 
 </style>
 """, unsafe_allow_html=True)
@@ -533,12 +540,26 @@ df_seasonal = pd.DataFrame({
     "H₂ Balance (kg)": monthly_balance
 })
 
+h2_production_tooltip = (
+    "<span style='font-size:11px;'>"
+    "Total hydrogen produced by the electrolyser over one year in the current scenario. "
+    "This depends on the selected energy source and EL operating hours schedule."
+    "</span>"
+)
+
 
 
 # --- Waste heat recovery ---
 HEAT_RECOVERY_FRAC = DATA.loc["heat_recovery_frac", "value"]  # 20% recoverable (Kumar et al., 2025; Lungu et al., 2025)
 monthly_waste_heat_kWh = usable_kwh * HEAT_RECOVERY_FRAC
 annual_waste_heat_kWh = monthly_waste_heat_kWh.sum()
+
+heat_recovery_tooltip = (
+    "<span style='font-size:11px;'>"
+    "Industrial Symbiosis case: Potential of waste heat recovered from the electrolyser. "
+    "Gains depend on how much of this heat can be matched with yearly office-heating demand."
+    "</span>"
+)
 
 # =======================
 # KPI INPUTS (ANNUAL AGGREGATES)
@@ -608,6 +629,14 @@ if WWTP_O2_DEMAND > 0:
     o2_reuse_pct = (o2_reuse_kg / WWTP_O2_DEMAND) * 100.0
 else:
     o2_reuse_pct = 0.0
+
+
+o2_reuse_tooltip = (
+    "<span style='font-size:11px;'>"
+    "Industrial Symbiosis case: O₂ from electrolysis can be reused at the WWTP, reducing aeration energy. "
+    "Because the WWTP is very large, the hub supplies only a small fraction."
+    "</span>"
+)
 
 # =======================
 # CO₂ AVOIDED PER HOUSE
@@ -718,15 +747,29 @@ else:
     h2_storage_util_pct_min = 0.0
     h2_storage_util_pct_avg = 0.0
 
-# Identify months with highest and lowest storage utilisation
+# Identify months with highest and lowest H2 storage utilisation
 month_labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
                 "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 if len(h2_storage_util_pct_by_month) == 12:
-    idx_max = int(np.argmax(h2_storage_util_pct_by_month))
-    idx_min = int(np.argmin(h2_storage_util_pct_by_month))
-    h2_storage_month_max = month_labels[idx_max]
-    h2_storage_month_min = month_labels[idx_min]
+    # Use previously computed max/min values
+    max_val = h2_storage_util_pct_max
+    min_val = h2_storage_util_pct_min
+    tol = 1e-6  # tolerance for float comparison
+
+    months_max = [
+        month_labels[i]
+        for i, v in enumerate(h2_storage_util_pct_by_month)
+        if abs(v - max_val) <= tol
+    ]
+    months_min = [
+        month_labels[i]
+        for i, v in enumerate(h2_storage_util_pct_by_month)
+        if abs(v - min_val) <= tol
+    ]
+
+    h2_storage_month_max = ", ".join(months_max) if months_max else "-"
+    h2_storage_month_min = ", ".join(months_min) if months_min else "-"
 else:
     h2_storage_month_max = "-"
     h2_storage_month_min = "-"
@@ -751,6 +794,176 @@ total_waste_heat    = float(annual_waste_heat_kWh)
 if total_co2_avoided > total_co2_grid:
     st.warning('This is a warning', icon="⚠️")
 
+# =======================
+# Seasonal coverage risk logic
+# =======================
+cov = float(seasonal_coverage_pct)
+
+if cov < 50:
+    seasonal_color = "dt-kpi-red" # red
+    seasonal_status = (
+        "Hydrogen production covers less than half of the annual demand. "
+        "System is critically undersized or insufficiently operated."
+    )
+
+elif cov < 90:
+    seasonal_color = "dt-kpi-amber"  # amber
+    seasonal_status = (
+        "Hydrogen production partially meets demand. "
+        "Backup supply or operational adjustments are required."
+    )
+
+elif cov <= 110:
+    seasonal_color = "dt-kpi-green"  # green
+    seasonal_status = (
+        "Hydrogen production sufficiently meets annual demand. "
+        "System is well-balanced with acceptable surplus margin."
+    )
+
+else:
+    seasonal_color = "dt-kpi-red"  # red for oversizing
+    seasonal_status = (
+        "Hydrogen production significantly exceeds annual demand. "
+        "System is oversized, leading to surplus production and potential inefficiencies. "
+        "Consider expanding end-users, improving storage, or resizing system."
+    )
+# =======================
+# THRESHOLD: CO₂ EMISSIONS (GRID)
+# =======================
+
+if total_co2_grid > 0:
+    co2_grid_color_class = "dt-kpi-red"
+    co2_grid_tooltip = (
+        "<span style='font-size:11px;'>"
+        "CO₂ released due to grid electricity used by the electrolyser.<br>"
+        "This indicates hydrogen production was <b>not fully renewable</b>."
+        "</span>"
+    )
+else:
+    co2_grid_color_class = "dt-kpi-green"
+    co2_grid_tooltip = (
+        "<span style='font-size:11px;'>"
+        "No CO₂ emissions from grid electricity.<br>"
+        "Hydrogen production is <b>fully renewable</b>."
+        "</span>"
+    )
+# =======================
+# THRESHOLD: H₂ STORAGE UTILISATION
+# =======================
+
+if h2_cap > 0:
+    headline_pct = h2_storage_util_pct_avg
+
+    # ----- Threshold logic for colour/status -----
+    # < 20%   mostly idle        RED
+    # 20–60%  used sometimes     AMBER
+    # 60–85%  actively used      GREEN
+    # > 85%   near saturation    RED
+
+    if headline_pct < 20:
+        h2_storage_color_class = "dt-kpi-red"
+        threshold_part = (
+            "The buffer is <b>rarely used</b>. This suggests oversizing or weak "
+            "coupling between production and demand."
+        )
+    elif headline_pct < 60:
+        h2_storage_color_class = "dt-kpi-amber"
+        threshold_part = (
+            "The buffer is used <b>occasionally</b>. Operation is acceptable but may "
+            "benefit from optimisation."
+        )
+    elif headline_pct <= 85:
+        h2_storage_color_class = "dt-kpi-green"
+        threshold_part = (
+            "The buffer is <b>actively used</b> without saturation. Storage appears "
+            "well-sized and well-integrated."
+        )
+    else:
+        h2_storage_color_class = "dt-kpi-red"
+        threshold_part = (
+            "The buffer is <b>frequently near full</b>. There is a risk of "
+            "saturation and hydrogen spill."
+        )
+
+
+    tooltip_text = (
+        "Average monthly fill level of the hydrogen buffer over the year.<br>"
+        f"Max: {h2_storage_util_pct_max:.0f}% in {h2_storage_month_max}.<br>"
+        f"Min: {h2_storage_util_pct_min:.0f}% in {h2_storage_month_min}.<br><br>"
+        f"{threshold_part}"
+    )
+
+else:
+    headline_pct = 0.0
+    h2_storage_color_class = "dt-kpi-red"
+    tooltip_text = (
+        "Hydrogen storage capacity is set to 0 kg in the current constants, "
+        "so the buffer is not active in this scenario."
+    )
+
+# =======================
+# THRESHOLD: CO₂ Emissions Avoided
+# =======================
+co2_val = float(co2_avoided_kg)
+
+base_text = (
+    "CO₂ avoided by supplying heat with green hydrogen instead of grid electricity. "
+)
+
+if co2_val == 0:
+    co2_avoided_color_class = "dt-kpi-red"
+    perf_text = (
+        "The hub does not currently deliver a decarbonisation benefit "
+        "(hydrogen use or renewables input may be too low)."
+    )
+elif co2_val > 50_000:
+    co2_avoided_color_class = "dt-kpi-green"
+    perf_text = (
+        "Strong yearly CO₂ reduction (>50,000 kg/yr); compare this with "
+        "your site sustainability targets."
+    )
+else:
+    co2_avoided_color_class = ""  # neutral card
+    perf_text = (
+        "Some CO₂ savings are achieved; use this value as a reference against your "
+        "CO₂ reduction targets."
+    )
+
+co2_avoided_tooltip = (
+    f"<span style='font-size:11px;'>{base_text}{perf_text}</span>"
+)
+# =======================
+# THRESHOLD: CO₂ Avoided per House
+# =======================
+avg_house_val = float(co2_avoided_per_house_avg)
+
+base_text_house = (
+    "Average CO₂ avoided per demo house compared to natural gas heating "
+    "(A-label reference, area-weighted). "
+)
+
+if avg_house_val == 0:
+    co2_house_color_class = "dt-kpi-red"
+    perf_text_house = (
+        "Value is zero: in this scenario the houses do not receive a measurable "
+        "decarbonisation benefit from the hub."
+    )
+elif avg_house_val > 1_000:
+    co2_house_color_class = "dt-kpi-green"
+    perf_text_house = (
+        "Green status: each house avoids over 1,000 kg CO₂/yr; this represents a "
+        "strong decarbonisation effect for residential heating."
+    )
+else:
+    co2_house_color_class = ""  # neutral
+    perf_text_house = (
+        "Some CO₂ savings are achieved per house; use this value as a reference "
+        "against your local or project CO₂ targets."
+    )
+
+co2_house_tooltip = (
+    f"<span style='font-size:11px;'>{base_text_house}{perf_text_house}</span>"
+)
 
 
 # =======================
@@ -898,7 +1111,7 @@ with main_col:
                     </h6>
                 </div>
                 <p>{total_res_yield_kwh:,.0f}</p>
-                <span>kWh/yr from PV + wind (allocated to H₂)</span>
+                <span>kWh/yr</span>
             </div>
             """,
             unsafe_allow_html=True,
@@ -909,9 +1122,14 @@ with main_col:
         st.markdown(
             f"""
                 <div class="dt-kpi-card">
-                  <h6>Recoverable Waste Heat</h6>
+                  <h6>
+                    Recoverable Waste Heat
+                    <span class="tooltip">ⓘ
+                      <span class="tooltiptext">{heat_recovery_tooltip}</span>
+                    </span>
+                  </h6>
                   <p>{annual_waste_heat_kWh:,.0f}</p>
-                  <span>kWh/yr (20% of EL input)</span>
+                  <span>kWh/yr (30% of EL input)</span>
                 </div>
                 """,
             unsafe_allow_html=True,
@@ -922,7 +1140,12 @@ with main_col:
         st.markdown(
             f"""
                 <div class="dt-kpi-card">
-                  <h6>O₂ Reused (WWTP)</h6>
+                  <h6>
+                      O₂ Reused (WWTP)
+                      <span class="tooltip">ⓘ
+                        <span class="tooltiptext">{o2_reuse_tooltip}</span>
+                      </span>
+                  </h6>
                   <p>{o2_reuse_kg:,.0f}</p>
                   <span>kg/yr – {o2_reuse_pct:.3f}% of WWTP demand</span>
                 </div>
@@ -934,12 +1157,17 @@ with main_col:
     with bottom_cols[3]:
         st.markdown(
             f"""
-                <div class="dt-kpi-card">
-                  <h6>CO₂ Emissions Avoided</h6>
+                <div class="dt-kpi-card {co2_avoided_color_class}">
+                  <h6>
+                    CO₂ Emissions Avoided
+                    <span class="tooltip">ⓘ
+                      <span class="tooltiptext">{co2_avoided_tooltip}</span>
+                    </span>
+                  </h6>
                   <p>{co2_avoided_kg:,.0f}</p>
-                  <span>kg CO₂/yr (green H₂ vs grid)</span>
+                  <span>kg CO₂/yr (green H₂ vs grid heat)</span>
                 </div>
-                """,
+            """,
             unsafe_allow_html=True,
         )
 
@@ -947,22 +1175,32 @@ with main_col:
     with bottom_cols[4]:
         st.markdown(
             f"""
-                <div class="dt-kpi-card">
-                  <h6>CO₂ Avoided per House</h6>
+                <div class="dt-kpi-card {co2_house_color_class}">
+                  <h6>
+                    CO₂ Avoided per House
+                    <span class="tooltip">ⓘ
+                      <span class="tooltiptext">{co2_house_tooltip}</span>
+                    </span>
+                  </h6>
                   <p>{co2_avoided_per_house_avg:,.0f}</p>
-                  <span>kg CO₂/house·yr (A-label, area-weighted)</span>
+                  <span>kg CO₂/house·yr</span>
                 </div>
                 """,
             unsafe_allow_html=True,
         )
 
-# ===== RIGHT COLUMN: 5 PRIORITY KPI CARDS (VERTICAL STACK) =====
+# ===== RIGHT COLUMN: 5 PRIORITY KPI CARDS =====
 with right_col:
     # 1. Hydrogen Production
     st.markdown(
         f"""
             <div class="dt-kpi-card">
-              <h6>Hydrogen Production</h6>
+              <h6>
+                Hydrogen Production
+                <span class="tooltip">ⓘ
+                  <span class="tooltiptext">{h2_production_tooltip}</span>
+                </span>
+              </h6>
               <p>{hydrogen_kg_year:,.0f}</p>
               <span>kg H₂/yr</span>
             </div>
@@ -970,40 +1208,30 @@ with right_col:
         unsafe_allow_html=True,
     )
 
-    # 2. Seasonal Coverage of H₂ Demand
+    # 2. Seasonal Coverage of H₂ Demand (with thresholds)
     st.markdown(
         f"""
-            <div class="dt-kpi-card">
-              <h6>Seasonal Coverage</h6>
-              <p>{seasonal_coverage_pct:,.0f}%</p>
-              <span>of annual H₂ demand met</span>
-            </div>
-            """,
+        <div class="dt-kpi-card {seasonal_color}">
+          <h6>
+            Seasonal Coverage
+            <span class="tooltip">ⓘ
+              <span class="tooltiptext">{seasonal_status}</span>
+            </span>
+          </h6>
+          <p>{seasonal_coverage_pct:.0f}%</p>
+          <span>of annual H₂ demand met</span>
+        </div>
+        """,
         unsafe_allow_html=True,
     )
 
     # 3. H₂ Storage Utilisation
-    if h2_cap > 0:
-        headline_pct = h2_storage_util_pct_avg
-        tooltip_text = (
-            f"Average monthly fill level of the hydrogen buffer over the year. "
-            f"Max: {h2_storage_util_pct_max:.0f}% in {h2_storage_month_max}. "
-            f"Min: {h2_storage_util_pct_min:.0f}% in {h2_storage_month_min}."
-        )
-    else:
-        headline_pct = 0.0
-        tooltip_text = (
-            "Hydrogen storage capacity is set to 0 kg in the current constants, "
-            "so the buffer is not active in this scenario."
-        )
-
     st.markdown(
         f"""
-        <div class="dt-kpi-card">
+        <div class="dt-kpi-card {h2_storage_color_class}">
           <h6>
             H₂ Storage Utilisation
-            <span class="tooltip">
-              ⓘ
+            <span class="tooltip">ⓘ
               <span class="tooltiptext">{tooltip_text}</span>
             </span>
           </h6>
@@ -1014,15 +1242,20 @@ with right_col:
         unsafe_allow_html=True,
     )
 
-    # 4. CO₂ Emissions (Grid)
+    # 5. CO₂ Emissions (Grid) — with threshold styling
     st.markdown(
         f"""
-            <div class="dt-kpi-card">
-              <h6>CO₂ Emissions (Grid)</h6>
-              <p>{grid_emitted_co2_kg:,.0f}</p>
-              <span>kg CO₂/yr from grid input</span>
-            </div>
-            """,
+        <div class="dt-kpi-card {co2_grid_color_class}">
+          <h6>
+            CO₂ Emissions (Grid)
+            <span class="tooltip">ⓘ
+              <span class="tooltiptext">{co2_grid_tooltip}</span>
+            </span>
+          </h6>
+          <p>{total_co2_grid:,.0f}</p>
+          <span>kg CO₂/yr from grid input</span>
+        </div>
+        """,
         unsafe_allow_html=True,
     )
 
