@@ -1,277 +1,338 @@
 <!DOCTYPE html>
 <html>
-<head>
-<meta charset="utf-8">
-<title>Animate a line</title>
-<meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
-<link href="https://api.mapbox.com/mapbox-gl-js/v3.15.0/mapbox-gl.css" rel="stylesheet">
-<script src="https://api.mapbox.com/mapbox-gl-js/v3.15.0/mapbox-gl.js"></script>
-<script src="https://unpkg.com/three@0.126.0/build/three.min.js"></script>
-<script src="https://unpkg.com/three@0.126.0/examples/js/loaders/GLTFLoader.js"></script>
-<style>
-body { margin: 0; padding: 0; }
-#map { position: absolute; top: 0; bottom: 0; width: 100%; }
-</style>
-</head>
-<body>
-<style>
-    button {
+  <head>
+    <meta charset="utf-8" />
+    <title>Animate a line</title>
+    <meta
+      name="viewport"
+      content="initial-scale=1,maximum-scale=1,user-scalable=no"
+    />
+    <link
+      href="https://api.mapbox.com/mapbox-gl-js/v3.15.0/mapbox-gl.css"
+      rel="stylesheet"
+    />
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.15.0/mapbox-gl.js"></script>
+    <script src="https://unpkg.com/three@0.126.0/build/three.min.js"></script>
+    <script src="https://unpkg.com/three@0.126.0/examples/js/loaders/GLTFLoader.js"></script>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      #map {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <style>
+      button {
         position: absolute;
         margin: 20px;
-    }
+      }
 
-    #pause::after {
-        content: 'Pause';
-    }
+      #pause::after {
+        content: "Pause";
+      }
 
-    #pause.pause::after {
-        content: 'Play';
-    }
+      #pause.pause::after {
+        content: "Play";
+      }
 
-.legend {
-    position: absolute;
-    bottom: 20px;
-    left: 20px;
-    background: rgba(0,0,0,0.7);
-    color: white;
-    padding: 10px 14px;
-    border-radius: 6px;
-    font-family: sans-serif;
-    font-size: 13px;
-    line-height: 18px;
-    z-index: 999;
-}
+      .legend {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 10px 14px;
+        border-radius: 6px;
+        font-family: sans-serif;
+        font-size: 13px;
+        line-height: 18px;
+        z-index: 999;
+      }
 
-.legend h4 {
-    margin: 0 0 6px 0;
-    font-size: 14px;
-    font-weight: bold;
-}
+      .legend h4 {
+        margin: 0 0 6px 0;
+        font-size: 14px;
+        font-weight: bold;
+      }
 
-.legend-item {
-    display: flex;
-    align-items: center;
-    margin-bottom: 4px;
-}
+      .legend-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 4px;
+      }
 
-.legend-color {
-    width: 16px;
-    height: 16px;
-    margin-right: 8px;
-    border-radius: 3px;
-    display: inline-block;
-}
+      .legend-color {
+        width: 16px;
+        height: 16px;
+        margin-right: 8px;
+        border-radius: 3px;
+        display: inline-block;
+      }
 
-.legend-icon {
-    width: 16px;
-    height: 16px;
-    margin-right: 6px;
-}
+      .legend-icon {
+        width: 16px;
+        height: 16px;
+        margin-right: 6px;
+      }
 
+      .warning-label {
+        background: red;
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: bold;
+      }
+    </style>
 
-</style>
+    <script id="nodes-data" type="application/json">
+      __NODES__
+    </script>
+    <script id="edges-data" type="application/json">
+      __EDGES__
+    </script>
+    <script id="pipe-data" type="application/json">
+      __PIPELINE__
+    </script>
 
-<script id="nodes-data" type="application/json">__NODES__</script>
-<script id="edges-data" type="application/json">__EDGES__</script>
-<script id="pipe-data" type="application/json">__PIPELINE__</script>
+    <script id="warnings-data" type="application/json">
+      __WARNINGS__
+    </script>
 
+    <div id="map"></div>
+    <button id="pause"></button>
+    <!-- Empty legend container – JS will fill this -->
+    <div id="legend" class="legend"></div>
 
-<div id="map"></div>
-<button id="pause"></button>
-<!-- Empty legend container – JS will fill this -->
-<div id="legend" class="legend"></div>
+    <script>
+      mapboxgl.accessToken =
+        "pk.eyJ1IjoiY3lnbnVzMjYiLCJhIjoiY2s5Z2MzeWVvMGx3NTNtbzRnbGtsOXl6biJ9.8SLdJuFQzuN-s4OlHbwzLg";
 
-<script>
+      // Parse the embedded GeoJSON
+      const points = JSON.parse(
+        document.getElementById("nodes-data").textContent
+      );
+      const edges = JSON.parse(
+        document.getElementById("edges-data").textContent
+      );
+      const pipeline = JSON.parse(
+        document.getElementById("pipe-data").textContent
+      );
 
-    mapboxgl.accessToken = 'pk.eyJ1IjoiY3lnbnVzMjYiLCJhIjoiY2s5Z2MzeWVvMGx3NTNtbzRnbGtsOXl6biJ9.8SLdJuFQzuN-s4OlHbwzLg';
-
-    // Parse the embedded GeoJSON
-    const points = JSON.parse(document.getElementById('nodes-data').textContent);
-    const edges = JSON.parse(document.getElementById('edges-data').textContent);
-    const pipeline = JSON.parse(document.getElementById('pipe-data').textContent);
-
-
-    const map = new mapboxgl.Map({
-        container: 'map',
+      const map = new mapboxgl.Map({
+        container: "map",
         // Choose from Mapbox's core styles, or make your own style with Mapbox Studio
         center: [6.644, 52.366],
         zoom: 15.5,
         pitch: 60,
         bearing: -20,
         antialias: true,
-        style: 'mapbox://styles/cygnus26/cmh0rq554001y01sc2i2z9i6k'
-    });
+        style: "mapbox://styles/cygnus26/cmh0rq554001y01sc2i2z9i6k",
+      });
 
-
-
-    map.on('load', () => {
+      map.on("load", () => {
         // ------- ADD DATA SOURCES -------
-        if (!map.getSource('nodes')) {
-        map.addSource('nodes', {
-          type: 'geojson',
-          data: points
-        });
-      } else {
-        map.getSource('nodes').setData(points);
-      }
+        if (!map.getSource("nodes")) {
+          map.addSource("nodes", {
+            type: "geojson",
+            data: points,
+          });
+        } else {
+          map.getSource("nodes").setData(points);
+        }
 
-        if (!map.getSource('edges')) {
-        map.addSource('edges', {
-          type: 'geojson',
-          data: edges
-        });
-    } else {
-        map.getSource('edges').setData(edges);
-    }
+        if (!map.getSource("edges")) {
+          map.addSource("edges", {
+            type: "geojson",
+            data: edges,
+          });
+        } else {
+          map.getSource("edges").setData(edges);
+        }
 
-    // -------- ADD ICONS --------
+        // -------- ADD ICONS --------
         map.loadImage(
-            'https://img.icons8.com/3d-fluency/94/location.png',
-            (error, image) => {
-                if (error) throw error;
-                map.addImage('node-icon', image);
-            }
+          "https://img.icons8.com/3d-fluency/94/location.png",
+          (error, image) => {
+            if (error) throw error;
+            map.addImage("node-icon", image);
+          }
         );
 
         // -------- ADD LAYERS --------
-      map.addLayer({
-            'id': 'edges-background',
-            'type': 'line',
-            'source': 'edges',
-            'layout': {
-                'line-join': 'round',
-                'line-cap': 'round'
-            },
-            'paint': {
-                'line-color': 'white',
-                'line-width': ['get', 'value_scaled'],
-                'line-opacity': 0.6
-            }
+        map.addLayer({
+          id: "edges-background",
+          type: "line",
+          source: "edges",
+          layout: {
+            "line-join": "round",
+            "line-cap": "round",
+          },
+          paint: {
+            "line-color": "white",
+            "line-width": ["get", "value_scaled"],
+            "line-opacity": 0.6,
+          },
         });
 
         map.addLayer({
-            'id': 'edges-foreground',
-            'type': 'line',
-            'source': 'edges',
-            'layout': {
-                'line-join': 'round',
-                'line-cap': 'round'
-            },
-            'paint': {
-                'line-color': ['get', 'color'],
-                'line-width': ['get', 'value_scaled'],
-                'line-dasharray': [0, 2, 4],
-                'line-emissive-strength': 1.5
-            }
+          id: "edges-foreground",
+          type: "line",
+          source: "edges",
+          layout: {
+            "line-join": "round",
+            "line-cap": "round",
+          },
+          paint: {
+            "line-color": ["get", "color"],
+            "line-width": ["get", "value_scaled"],
+            "line-dasharray": [0, 2, 4],
+            "line-emissive-strength": 1.5,
+          },
         });
         // --- O2 overlay (parallel offset) ---
         map.addLayer({
-          id: 'edges-O2-fg-offset',
-          type: 'line',
-          source: 'edges',
-          filter: ['==', ['get','flow_type'], 'O2'],
-          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          id: "edges-O2-fg-offset",
+          type: "line",
+          source: "edges",
+          filter: ["==", ["get", "flow_type"], "O2"],
+          layout: { "line-join": "round", "line-cap": "round" },
           paint: {
-            'line-color': ['get','color'],
-            'line-width': ['coalesce', ['to-number', ['get','value_scaled']], 2],
-            'line-dasharray': [0, 2, 4],
-            'line-emissive-strength': 1.5,
-            'line-offset': 12   // big enough to SEE the separation; tune later
-          }
+            "line-color": ["get", "color"],
+            "line-width": [
+              "coalesce",
+              ["to-number", ["get", "value_scaled"]],
+              2,
+            ],
+            "line-dasharray": [0, 2, 4],
+            "line-emissive-strength": 1.5,
+            "line-offset": 12, // big enough to SEE the separation; tune later
+          },
         });
 
         // --- H2O overlay (parallel offset) ---
         map.addLayer({
-          id: 'edges-H2O-fg-offset',
-          type: 'line',
-          source: 'edges',
-          filter: ['==', ['get','flow_type'], 'H2O'],
-          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          id: "edges-H2O-fg-offset",
+          type: "line",
+          source: "edges",
+          filter: ["==", ["get", "flow_type"], "H2O"],
+          layout: { "line-join": "round", "line-cap": "round" },
           paint: {
-            'line-color': ['get','color'],
-            'line-width': ['coalesce', ['to-number', ['get','value_scaled']], 2],
-            'line-dasharray': [0, 2, 4],
-            'line-emissive-strength': 1.5,
-            'line-offset': -10
-          }
+            "line-color": ["get", "color"],
+            "line-width": [
+              "coalesce",
+              ["to-number", ["get", "value_scaled"]],
+              2,
+            ],
+            "line-dasharray": [0, 2, 4],
+            "line-emissive-strength": 1.5,
+            "line-offset": -10,
+          },
         });
         // --- O2 halo under the offset layer ---
-        map.addLayer({
-          id: 'edges-O2-bg-offset',
-          type: 'line',
-          source: 'edges',
-          filter: ['==', ['get','flow_type'], 'O2'],
-          layout: { 'line-join': 'round', 'line-cap': 'round' },
-          paint: {
-            'line-color': 'white',
-            'line-width': ['coalesce', ['to-number', ['get','value_scaled']], 2],
-            'line-opacity': 0.6,
-            'line-offset': 10
-          }
-        }, 'edges-O2-fg-offset'); // insert below the foreground
+        map.addLayer(
+          {
+            id: "edges-O2-bg-offset",
+            type: "line",
+            source: "edges",
+            filter: ["==", ["get", "flow_type"], "O2"],
+            layout: { "line-join": "round", "line-cap": "round" },
+            paint: {
+              "line-color": "white",
+              "line-width": [
+                "coalesce",
+                ["to-number", ["get", "value_scaled"]],
+                2,
+              ],
+              "line-opacity": 0.6,
+              "line-offset": 10,
+            },
+          },
+          "edges-O2-fg-offset"
+        ); // insert below the foreground
 
         // --- H2O halo under the offset layer ---
-        map.addLayer({
-          id: 'edges-H2O-bg-offset',
-          type: 'line',
-          source: 'edges',
-          filter: ['==', ['get','flow_type'], 'H2O'],
-          layout: { 'line-join': 'round', 'line-cap': 'round' },
-          paint: {
-            'line-color': 'white',
-            'line-width': ['coalesce', ['to-number', ['get','value_scaled']], 2],
-            'line-opacity': 0.6,
-            'line-offset': -12
-          }
-        }, 'edges-H2O-fg-offset')
+        map.addLayer(
+          {
+            id: "edges-H2O-bg-offset",
+            type: "line",
+            source: "edges",
+            filter: ["==", ["get", "flow_type"], "H2O"],
+            layout: { "line-join": "round", "line-cap": "round" },
+            paint: {
+              "line-color": "white",
+              "line-width": [
+                "coalesce",
+                ["to-number", ["get", "value_scaled"]],
+                2,
+              ],
+              "line-opacity": 0.6,
+              "line-offset": -12,
+            },
+          },
+          "edges-H2O-fg-offset"
+        );
 
         // --- Pipeline source  ---
-        if (!map.getSource('elec_houses')) {
-          map.addSource('elec_houses', {
-            type: 'geojson',
-            data: pipeline   // FeatureCollection or LineString from your geojson.io file
+        if (!map.getSource("elec_houses")) {
+          map.addSource("elec_houses", {
+            type: "geojson",
+            data: pipeline, // FeatureCollection or LineString from your geojson.io file
           });
         } else {
-          map.getSource('elec_houses').setData(pipeline);
+          map.getSource("elec_houses").setData(pipeline);
         }
 
         map.addLayer({
-          id: 'elec_houses',
-          type: 'line',
-          source: 'elec_houses',
-          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          id: "elec_houses",
+          type: "line",
+          source: "elec_houses",
+          layout: { "line-join": "round", "line-cap": "round" },
           paint: {
-            'line-color': '#39FF14',
-            'line-width':  [
-              'interpolate', ['linear'],
-              ['coalesce', ['to-number', ['get', 'value']], 0],
-              0,     2,   // 0 kg/yr → 2 px
-              1000,  3,
-              3000,  6,
-              6000, 10,
-              10000,12
+            "line-color": "#39FF14",
+            "line-width": [
+              "interpolate",
+              ["linear"],
+              ["coalesce", ["to-number", ["get", "value"]], 0],
+              0,
+              2, // 0 kg/yr → 2 px
+              1000,
+              3,
+              3000,
+              6,
+              6000,
+              10,
+              10000,
+              12,
             ],
-            'line-opacity': 1,
-            'line-dasharray': [0, 2, 4],
-            'line-emissive-strength': 1.5,   // optional glow on dark maps
-          }
+            "line-opacity": 1,
+            "line-dasharray": [0, 2, 4],
+            "line-emissive-strength": 1.5, // optional glow on dark maps
+          },
         });
 
-                // =======================
+        // =======================
         // DYNAMIC LEGEND
         // =======================
-        const legendEl = document.getElementById('legend');
-        legendEl.innerHTML = '<h4>Legend</h4>';
+        const legendEl = document.getElementById("legend");
+        legendEl.innerHTML = "<h4>Legend</h4>";
 
         // Collect unique flow_type → color pairs from edges GeoJSON
-        const flowColors = {};  // { O2: "#00A2FF", H2O:"#FF4F4F", ... }
+        const flowColors = {}; // { O2: "#00A2FF", H2O:"#FF4F4F", ... }
 
         if (edges && edges.features) {
-          edges.features.forEach(f => {
+          edges.features.forEach((f) => {
             if (!f.properties) return;
             const t = f.properties.flow_type;
             const c = f.properties.color;
-            console.log('feature type/color:', t, c);
+            console.log("feature type/color:", t, c);
             if (!t || !c) return;
             if (!flowColors[t]) {
               flowColors[t] = c;
@@ -281,25 +342,24 @@ body { margin: 0; padding: 0; }
 
         // Add one legend row per flow_type
         Object.entries(flowColors).forEach(([type, color]) => {
-          const item = document.createElement('div');
-          item.className = 'legend-item';
+          const item = document.createElement("div");
+          item.className = "legend-item";
 
-          const swatch = document.createElement('span');
-          swatch.className = 'legend-color';
+          const swatch = document.createElement("span");
+          swatch.className = "legend-color";
 
-            let cssColor;
-            if (Array.isArray(color)) {
-              if (color.length === 3) {
-                cssColor = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
-              } else if (color.length === 4) {
-                cssColor = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${color[3]})`;
-              }
-            } else {
-              cssColor = color; // already a string like "#ff00aa" or "red"
+          let cssColor;
+          if (Array.isArray(color)) {
+            if (color.length === 3) {
+              cssColor = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+            } else if (color.length === 4) {
+              cssColor = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${color[3]})`;
             }
+          } else {
+            cssColor = color; // already a string like "#ff00aa" or "red"
+          }
 
-          swatch.style.backgroundColor = cssColor || '#888'; // fallback just in case
-          
+          swatch.style.backgroundColor = cssColor || "#888"; // fallback just in case
 
           item.appendChild(swatch);
           item.appendChild(document.createTextNode(` ${type} flow`));
@@ -307,122 +367,120 @@ body { margin: 0; padding: 0; }
         });
 
         // Add pipeline entry (matches elec_houses layer)
-        const pipeItem = document.createElement('div');
-        pipeItem.className = 'legend-item';
-        const pipeSwatch = document.createElement('span');
-        pipeSwatch.className = 'legend-color';
-        pipeSwatch.style.backgroundColor = '#39FF14';  // same as line-color in elec_houses
+        const pipeItem = document.createElement("div");
+        pipeItem.className = "legend-item";
+        const pipeSwatch = document.createElement("span");
+        pipeSwatch.className = "legend-color";
+        pipeSwatch.style.backgroundColor = "#39FF14"; // same as line-color in elec_houses
         pipeItem.appendChild(pipeSwatch);
-        pipeItem.appendChild(document.createTextNode(' Energy / H₂ pipeline'));
+        pipeItem.appendChild(document.createTextNode(" Energy / H₂ pipeline"));
         legendEl.appendChild(pipeItem);
 
         // Add node icon entry
-        const nodeItem = document.createElement('div');
-        nodeItem.className = 'legend-item';
+        const nodeItem = document.createElement("div");
+        nodeItem.className = "legend-item";
         const icon = new Image(16, 16);
-        icon.src = 'https://img.icons8.com/3d-fluency/94/location.png';
-        icon.className = 'legend-icon';
+        icon.src = "https://img.icons8.com/3d-fluency/94/location.png";
+        icon.className = "legend-icon";
         nodeItem.appendChild(icon);
-        nodeItem.appendChild(document.createTextNode(' Node'));
+        nodeItem.appendChild(document.createTextNode(" Node"));
         legendEl.appendChild(nodeItem);
 
-
-
         // --- Hover tooltip for the GREEN pipeline ---
-        const pipePopup = new mapboxgl.Popup({ closeButton: false, closeOnClick: false });
-
-        map.on('mouseenter', 'elec_houses', () => {
-          map.getCanvas().style.cursor = 'pointer';
+        const pipePopup = new mapboxgl.Popup({
+          closeButton: false,
+          closeOnClick: false,
         });
-        map.on('mouseleave', 'elec_houses', () => {
-          map.getCanvas().style.cursor = '';
+
+        map.on("mouseenter", "elec_houses", () => {
+          map.getCanvas().style.cursor = "pointer";
+        });
+        map.on("mouseleave", "elec_houses", () => {
+          map.getCanvas().style.cursor = "";
           pipePopup.remove();
         });
 
-        map.on('mousemove', 'elec_houses', (e) => {
+        map.on("mousemove", "elec_houses", (e) => {
           const f = e.features && e.features[0];
           if (!f) return;
 
           // Use a property if your geojson has one (e.g., name/medium/type), else fallback text
-          const label =
-            f.properties?.name ||
-            f.properties?.type ||
-            "Hydrogen pipeline to residential units";
-
+          const label = `${f.properties?.name || ""}, 
+            "Hydrogen pipeline to residential units",
+            ${f.properties?.tooltip || ""}
+            `;
           pipePopup.setLngLat(e.lngLat).setHTML(label).addTo(map);
         });
 
-          map.addLayer({
-            'id': 'nodes',
-            'type': 'symbol',
-            'source': 'nodes',
-            'layout': {
-                'icon-image': 'node-icon',
-                'icon-size': 0.2,
-                'icon-allow-overlap': true
-            }
+        map.addLayer({
+          id: "nodes",
+          type: "symbol",
+          source: "nodes",
+          layout: {
+            "icon-image": "node-icon",
+            "icon-size": 0.1,
+            "icon-allow-overlap": true,
+          },
         });
 
         // =======================
-        // ADD 3D Turbine
+        // ADD 3D Elements
         // =======================
 
-function add3DModel(name, lat, lon, url, scale, altitude) {
-        console.log('Adding 3D model:', name, lat, lon, url, scale, altitude);
+        function add3DModel(name, lat, lon, url, scale, altitude) {
+          console.log("Adding 3D model:", name, lat, lon, url, scale, altitude);
 
-         // 1. Origin of the model (your coordinates)
-        const modelOrigin = [lon, lat]; // [lng, lat]
-        const modelAltitude = altitude; // meters
-        const modelRotate = [Math.PI / 2, 0, 0]; // rotate from Z-up to Mapbox's coord system
+          // 1. Origin of the model (your coordinates)
+          const modelOrigin = [lon, lat]; // [lng, lat]
+          const modelAltitude = altitude; // meters
+          const modelRotate = [Math.PI / 2, 0, 0]; // rotate from Z-up to Mapbox's coord system
 
-        // Convert to Mercator coordinates
-        const modelAsMercatorCoordinate = mapboxgl.MercatorCoordinate.fromLngLat(
-          modelOrigin,
-          modelAltitude
-        );
+          // Convert to Mercator coordinates
+          const modelAsMercatorCoordinate =
+            mapboxgl.MercatorCoordinate.fromLngLat(modelOrigin, modelAltitude);
 
-        // 2. Transform to place/scale model correctly
-        const modelTransform = {
-          translateX: modelAsMercatorCoordinate.x,
-          translateY: modelAsMercatorCoordinate.y,
-          translateZ: modelAsMercatorCoordinate.z,
-          rotateX: modelRotate[0],
-          rotateY: modelRotate[1],
-          rotateZ: modelRotate[2],
-          // scale from real-world meters → Mercator units
-          scale: modelAsMercatorCoordinate.meterInMercatorCoordinateUnits()
-        };
+          // 2. Transform to place/scale model correctly
+          const modelTransform = {
+            translateX: modelAsMercatorCoordinate.x,
+            translateY: modelAsMercatorCoordinate.y,
+            translateZ: modelAsMercatorCoordinate.z,
+            rotateX: modelRotate[0],
+            rotateY: modelRotate[1],
+            rotateZ: modelRotate[2],
+            // scale from real-world meters → Mercator units
+            scale: modelAsMercatorCoordinate.meterInMercatorCoordinateUnits(),
+          };
 
-        const THREE = window.THREE;
+          const THREE = window.THREE;
 
-        return {
-          id: name,   // can be any id
-          type: 'custom',
-          renderingMode: '3d',
+          return {
+            id: name, // can be any id
+            type: "custom",
+            renderingMode: "3d",
 
-          onAdd: function (map, gl) {
-            this.camera = new THREE.Camera();
-            this.scene = new THREE.Scene();
-            this.clock = new THREE.Clock();   // ⏱ for animation
-            this.mixer = null;                // will hold AnimationMixer
+            onAdd: function (map, gl) {
+              this.camera = new THREE.Camera();
+              this.scene = new THREE.Scene();
+              this.clock = new THREE.Clock(); // ⏱ for animation
+              this.mixer = null; // will hold AnimationMixer
 
-            // Lights so you can actually see the model
-            const light1 = new THREE.DirectionalLight(0xffffff);
-            light1.position.set(0, -70, 100).normalize();
-            this.scene.add(light1);
+              // Lights so you can actually see the model
+              const light1 = new THREE.DirectionalLight(0xffffff);
+              light1.position.set(0, -70, 100).normalize();
+              this.scene.add(light1);
 
-            const light2 = new THREE.DirectionalLight(0xffffff);
-            light2.position.set(0, 70, 100).normalize();
-            this.scene.add(light2);
+              const light2 = new THREE.DirectionalLight(0xffffff);
+              light2.position.set(0, 70, 100).normalize();
+              this.scene.add(light2);
 
-            const modelUrl = url;
+              const modelUrl = url;
 
-            // Load your GLB / GLTF model here
-            const loader = new THREE.GLTFLoader();
-            loader.load(
-              modelUrl,
-              (gltf) => {
-                  console.log('Model loaded', gltf);
+              // Load your GLB / GLTF model here
+              const loader = new THREE.GLTFLoader();
+              loader.load(
+                modelUrl,
+                (gltf) => {
+                  console.log("Model loaded", gltf);
                   this.model = gltf.scene;
                   this.model.scale.set(scale, scale, scale);
                   this.scene.add(this.model);
@@ -436,244 +494,332 @@ function add3DModel(name, lat, lon, url, scale, altitude) {
                       action.play();
                     });
                   }
-                          },
+                },
                 undefined,
                 (error) => {
-                  console.error('Error loading GLB/GLTF:', error);
+                  console.error("Error loading GLB/GLTF:", error);
                 }
               );
 
-            this.map = map;
+              this.map = map;
 
-            // Use the map's canvas for Three.js
-            this.renderer = new THREE.WebGLRenderer({
-              canvas: map.getCanvas(),
-              context: gl,
-              antialias: true
-            });
-            this.renderer.autoClear = false;
-          },
+              // Use the map's canvas for Three.js
+              this.renderer = new THREE.WebGLRenderer({
+                canvas: map.getCanvas(),
+                context: gl,
+                antialias: true,
+              });
+              this.renderer.autoClear = false;
+            },
 
-          render: function (gl, matrix) {
-            const rotationX = new THREE.Matrix4().makeRotationAxis(
-              new THREE.Vector3(1, 0, 0),
-              modelTransform.rotateX
-            );
-            const rotationY = new THREE.Matrix4().makeRotationAxis(
-              new THREE.Vector3(0, 1, 0),
-              modelTransform.rotateY
-            );
-            const rotationZ = new THREE.Matrix4().makeRotationAxis(
-              new THREE.Vector3(0, 0, 1),
-              modelTransform.rotateZ
-            );
+            render: function (gl, matrix) {
+              const rotationX = new THREE.Matrix4().makeRotationAxis(
+                new THREE.Vector3(1, 0, 0),
+                modelTransform.rotateX
+              );
+              const rotationY = new THREE.Matrix4().makeRotationAxis(
+                new THREE.Vector3(0, 1, 0),
+                modelTransform.rotateY
+              );
+              const rotationZ = new THREE.Matrix4().makeRotationAxis(
+                new THREE.Vector3(0, 0, 1),
+                modelTransform.rotateZ
+              );
 
-            const m = new THREE.Matrix4().fromArray(matrix);
-            const l = new THREE.Matrix4()
-              .makeTranslation(
-                modelTransform.translateX,
-                modelTransform.translateY,
-                modelTransform.translateZ
-              )
-              .scale(
-                new THREE.Vector3(
-                  modelTransform.scale,
-                  -modelTransform.scale,
-                  modelTransform.scale
+              const m = new THREE.Matrix4().fromArray(matrix);
+              const l = new THREE.Matrix4()
+                .makeTranslation(
+                  modelTransform.translateX,
+                  modelTransform.translateY,
+                  modelTransform.translateZ
                 )
-              )
-              .multiply(rotationX)
-              .multiply(rotationY)
-              .multiply(rotationZ);
+                .scale(
+                  new THREE.Vector3(
+                    modelTransform.scale,
+                    -modelTransform.scale,
+                    modelTransform.scale
+                  )
+                )
+                .multiply(rotationX)
+                .multiply(rotationY)
+                .multiply(rotationZ);
 
-            this.camera.projectionMatrix = m.multiply(l);
+              this.camera.projectionMatrix = m.multiply(l);
 
-            // 🔄 UPDATE ANIMATION EACH FRAME
-            if (this.mixer && this.clock) {
-              const delta = this.clock.getDelta();
-              this.mixer.update(delta);
+              // 🔄 UPDATE ANIMATION EACH FRAME
+              if (this.mixer && this.clock) {
+                const delta = this.clock.getDelta();
+                this.mixer.update(delta);
+              }
+
+              // Render the model
+              this.renderer.resetState();
+              this.renderer.render(this.scene, this.camera);
+
+              // Tell Mapbox to keep re-rendering
+              this.map.triggerRepaint();
+            },
+          };
+        }
+
+        map.addLayer(
+          add3DModel(
+            "Turbine",
+            52.36539819191749,
+            6.648364042976962,
+            "https://raw.githubusercontent.com/ivan-cardenas/ivan-cardenas.github.io/main/assets/3dModel/animated_wind_turbine.glb",
+            0.01,
+            0
+          )
+        );
+
+        map.addLayer(
+          add3DModel(
+            "solar-panel",
+            52.364762552619894,
+            6.649536724001674,
+            "https://raw.githubusercontent.com/ivan-cardenas/ivan-cardenas.github.io/main/assets/3dModel/SolarPanel.glb",
+            0.05,
+            3
+          )
+        );
+
+        map.addLayer(
+          add3DModel(
+            "battery",
+            52.36602309567385,
+            6.6482971939360285,
+            "https://raw.githubusercontent.com/ivan-cardenas/ivan-cardenas.github.io/main/assets/3dModel/battery_48tl200.glb",
+            0.3,
+            6
+          )
+        );
+
+        // ========== END 3D MODEL ===========
+
+        // --- Listen for messages to update the map without reloading ---
+        window.addEventListener("message", (event) => {
+          // Optional: restrict origins for security (replace with your Streamlit origin)
+          // if (event.origin !== 'http://localhost:8501') return;
+
+          const msg = event.data;
+          if (!msg || typeof msg !== "object") return;
+
+          // Update edges
+          if (msg.type === "reloadEdges" && msg.data) {
+            try {
+              const newEdges =
+                typeof msg.data === "string" ? JSON.parse(msg.data) : msg.data;
+              const src = map.getSource("edges");
+              if (src) src.setData(newEdges);
+            } catch (e) {
+              console.error("Failed to parse edges payload", e);
             }
-
-            // Render the model
-            this.renderer.resetState();
-            this.renderer.render(this.scene, this.camera);
-
-            // Tell Mapbox to keep re-rendering
-            this.map.triggerRepaint();
           }
-        };
-      };
-    
-    map.addLayer(add3DModel('Turbine', 
-    52.36539819191749, 6.648364042976962,
-    'https://raw.githubusercontent.com/ivan-cardenas/ivan-cardenas.github.io/main/assets/3dModel/animated_wind_turbine.glb',
-    0.01,0
-    ));
 
-    map.addLayer(add3DModel('solar-panel', 
-    52.364762552619894, 6.649536724001674,
-    'https://raw.githubusercontent.com/ivan-cardenas/ivan-cardenas.github.io/main/assets/3dModel/SolarPanel.glb',
-    0.05,10
-    ));
-
-    map.addLayer(add3DModel('battery', 
-    52.36602309567385, 6.6482971939360285,
-    'https://raw.githubusercontent.com/ivan-cardenas/ivan-cardenas.github.io/main/assets/3dModel/battery_48tl200.glb',
-    0.3,10
-    ));
-
-
-// --- Listen for messages to update the map without reloading ---
-window.addEventListener('message', (event) => {
-  // Optional: restrict origins for security (replace with your Streamlit origin)
-  // if (event.origin !== 'http://localhost:8501') return;
-
-  const msg = event.data;
-  if (!msg || typeof msg !== 'object') return;
-
-  // Update edges
-  if (msg.type === 'reloadEdges' && msg.data) {
-    try {
-      const newEdges = (typeof msg.data === 'string') ? JSON.parse(msg.data) : msg.data;
-      const src = map.getSource('edges');
-      if (src) src.setData(newEdges);
-    } catch (e) {
-      console.error('Failed to parse edges payload', e);
-    }
-  }
-
-  // Update nodes
-  if (msg.type === 'reloadNodes' && msg.data) {
-    try {
-      const newNodes = (typeof msg.data === 'string') ? JSON.parse(msg.data) : msg.data;
-      const src = map.getSource('nodes');
-      if (src) src.setData(newNodes);
-    } catch (e) {
-      console.error('Failed to parse nodes payload', e);
-    }
-  }
-});
+          // Update nodes
+          if (msg.type === "reloadNodes" && msg.data) {
+            try {
+              const newNodes =
+                typeof msg.data === "string" ? JSON.parse(msg.data) : msg.data;
+              const src = map.getSource("nodes");
+              if (src) src.setData(newNodes);
+            } catch (e) {
+              console.error("Failed to parse nodes payload", e);
+            }
+          }
+        });
         // --- Hover tooltip for edges (includes O2 & H2O) ---
- const popup = new mapboxgl.Popup({ closeButton: false, closeOnClick: false });
+        const popup = new mapboxgl.Popup({
+          closeButton: false,
+          closeOnClick: false,
+        });
 
-        ['edges-foreground', 'edges-O2-fg-offset', 'edges-H2O-fg-offset'].forEach(layerId => {
-          map.on('mouseenter', layerId, () => {
-            map.getCanvas().style.cursor = 'pointer';
+        [
+          "edges-foreground",
+          "edges-O2-fg-offset",
+          "edges-H2O-fg-offset",
+        ].forEach((layerId) => {
+          map.on("mouseenter", layerId, () => {
+            map.getCanvas().style.cursor = "pointer";
           });
 
-          map.on('mouseleave', layerId, () => {
-            map.getCanvas().style.cursor = '';
+          map.on("mouseleave", layerId, () => {
+            map.getCanvas().style.cursor = "";
             popup.remove();
           });
 
-          map.on('mousemove', layerId, (e) => {
+          map.on("mousemove", layerId, (e) => {
             const f = e.features && e.features[0];
             if (!f) return;
             const content =
               f.properties.tooltip ||
-              `${f.properties.flow_type || ''}: from ${f.properties.from_id || ''} → to ${f.properties.to_id || ''} 
-              (${f.properties.value?.toLocaleString() || ''} ${f.properties.unit || ''})`;
+              `${f.properties.flow_type || ""}: from ${
+                f.properties.from_id || ""
+              } → to ${f.properties.to_id || ""} 
+              (${f.properties.value?.toLocaleString() || ""} ${
+                f.properties.unit || ""
+              })`;
             popup.setLngLat(e.lngLat).setHTML(content).addTo(map);
           });
         });
 
-
         // ------- HOVER TOOLTIP FOR NODES -------
-        map.on('mouseenter', 'nodes', () => {
-          map.getCanvas().style.cursor = 'pointer';
+        map.on("mouseenter", "nodes", () => {
+          map.getCanvas().style.cursor = "pointer";
         });
-        map.on('mouseleave', 'nodes', () => {
-          map.getCanvas().style.cursor = '';
+        map.on("mouseleave", "nodes", () => {
+          map.getCanvas().style.cursor = "";
           popup.remove();
         });
 
-        map.on('mousemove', 'nodes', (e) => {
+        map.on("mousemove", "nodes", (e) => {
           const f = e.features && e.features[0];
           if (!f) return;
           const content =
-            f.properties.tooltip ||
-            `Name: ${f.properties.name || ''}`;
+            f.properties.tooltip || `Name: ${f.properties.name || ""}`;
           popup.setLngLat(e.lngLat).setHTML(content).addTo(map);
         });
-
 
         // ------- ANIMATE THE DASHED LINE -------
 
         // technique based on https://jsfiddle.net/2mws8y3q/
         // an array of valid line-dasharray values, specifying the lengths of the alternating dashes and gaps that form the dash pattern
         const dashArraySequence = [
-            [0, 4, 3],
-            [0.5, 4, 2.5],
-            [1, 4, 2],
-            [1.5, 4, 1.5],
-            [2, 4, 1],
-            [2.5, 4, 0.5],
-            [3, 4, 0],
-            [0, 0.5, 3, 3.5],
-            [0, 1, 3, 3],
-            [0, 1.5, 3, 2.5],
-            [0, 2, 3, 2],
-            [0, 2.5, 3, 1.5],
-            [0, 3, 3, 1],
-            [0, 3.5, 3, 0.5]
+          [0, 4, 3],
+          [0.5, 4, 2.5],
+          [1, 4, 2],
+          [1.5, 4, 1.5],
+          [2, 4, 1],
+          [2.5, 4, 0.5],
+          [3, 4, 0],
+          [0, 0.5, 3, 3.5],
+          [0, 1, 3, 3],
+          [0, 1.5, 3, 2.5],
+          [0, 2, 3, 2],
+          [0, 2.5, 3, 1.5],
+          [0, 3, 3, 1],
+          [0, 3.5, 3, 0.5],
         ];
 
         let step = 0;
         let paused = false;
         let rafId = null;
 
-function animateDashArray(timestamp) {
-  if (paused) return;
+        function animateDashArray(timestamp) {
+          if (paused) return;
 
-  const newStep = parseInt((timestamp / 50) % dashArraySequence.length);
-  if (newStep !== step) {
-    const pattern = dashArraySequence[newStep];
+          const newStep = parseInt((timestamp / 50) % dashArraySequence.length);
+          if (newStep !== step) {
+            const pattern = dashArraySequence[newStep];
 
             // Update ALL flow layers if present
-        if (map.getLayer('edges-foreground')) {
-          map.setPaintProperty('edges-foreground', 'line-dasharray', pattern);
+            if (map.getLayer("edges-foreground")) {
+              map.setPaintProperty(
+                "edges-foreground",
+                "line-dasharray",
+                pattern
+              );
+            }
+            if (map.getLayer("edges-O2-fg-offset")) {
+              map.setPaintProperty(
+                "edges-O2-fg-offset",
+                "line-dasharray",
+                pattern
+              );
+            }
+            if (map.getLayer("edges-H2O-fg-offset")) {
+              map.setPaintProperty(
+                "edges-H2O-fg-offset",
+                "line-dasharray",
+                pattern
+              );
+            }
+            if (map.getLayer("elec_houses")) {
+              map.setPaintProperty("elec_houses", "line-dasharray", pattern);
+            }
+            step = newStep;
+          }
+          rafId = requestAnimationFrame(animateDashArray);
         }
-        if (map.getLayer('edges-O2-fg-offset')) {
-          map.setPaintProperty('edges-O2-fg-offset', 'line-dasharray', pattern);
-        }
-        if (map.getLayer('edges-H2O-fg-offset')) {
-          map.setPaintProperty('edges-H2O-fg-offset', 'line-dasharray', pattern);
-        }
-        if (map.getLayer('elec_houses')) {
-          map.setPaintProperty('elec_houses', 'line-dasharray', pattern);
-        }
-    step = newStep;
-  }
-  rafId = requestAnimationFrame(animateDashArray);
-}
 
-// Pause/Play control (single, global)
-const btn = document.getElementById('pause');
-btn.addEventListener('click', () => {
-  paused = !paused;
-  btn.classList.toggle('pause', paused); // CSS flips label Play/Pause
-  if (!paused) {
-    if (!rafId) rafId = requestAnimationFrame(animateDashArray);
-  } else if (rafId) {
-    cancelAnimationFrame(rafId);
-    rafId = null;
-  }
-});
+        // Pause/Play control (single, global)
+        const btn = document.getElementById("pause");
+        btn.addEventListener("click", () => {
+          paused = !paused;
+          btn.classList.toggle("pause", paused); // CSS flips label Play/Pause
+          if (!paused) {
+            if (!rafId) rafId = requestAnimationFrame(animateDashArray);
+          } else if (rafId) {
+            cancelAnimationFrame(rafId);
+            rafId = null;
+          }
+        });
 
-// Start animation initially
-rafId = requestAnimationFrame(animateDashArray);
+        // Start animation initially
+        rafId = requestAnimationFrame(animateDashArray);
 
-    
-    });
-</script>
-<!-- dynamic info label -->
-<div id="energyLabel"
-     style="position:absolute;top:10px;right:10px;
-            background:rgba(0,0,0,0.6);color:white;
-            padding:6px 10px;border-radius:6px;
-            font-size:14px;">
-  Source: __ENERGY_SOURCE__
-</div>
+        // ------- ADD WARNING LABELS -------
+        const warnings = JSON.parse(document.getElementById("warnings-data").textContent.trim());
+        
 
-</body>
+        const co2_warning = warnings.features.find(
+          (f) => f.properties.node_id === "ELEC-01"
+        );
+        const co2_warning_value = co2_warning.properties.warning;
+        const co2_coords = co2_warning.geometry.coordinates;
+
+        const el = document.createElement("div");
+        el.className = "warning-label";
+        el.innerText = co2_warning_value;
+       
+
+        new mapboxgl.Marker(el).setLngLat(co2_coords).addTo(map).setDraggable(true).setAltitude(100);
+
+        const h2_warning = warnings.features.find(
+          (f) => f.properties.node_id === "HOU"
+        );
+        const h2_warning_value = h2_warning.properties.warning;
+        const h2_coords = h2_warning.geometry.coordinates;
+
+        const houses_h2 = document.createElement("div");
+        houses_h2.className = "warning-label";
+        houses_h2.innerText = h2_warning_value;
+        console.log(houses_h2);
+        
+        new mapboxgl.Marker(houses_h2).setLngLat(h2_coords).addTo(map).setDraggable(true).setAltitude(100);
+
+        const pipe_warning = warnings.features.find(
+          (f) => f.properties.node_id === "PIPE"
+        );
+        const pipe_warning_value = pipe_warning.properties.warning;
+        const pipe_coords = pipe_warning.geometry.coordinates;
+
+        const pipe = document.createElement("div");
+        pipe.className = "warning-label";
+        pipe.innerText = pipe_warning_value;
+        console.log(pipe);
+        
+        new mapboxgl.Marker(pipe).setLngLat(pipe_coords).addTo(map).setDraggable(true).setAltitude(100);
+
+        // END OF ON LOAD MAP
+      });
+    </script>
+    <!-- dynamic info label -->
+    <div
+      id="energyLabel"
+      style="
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: rgba(0, 0, 0, 0.6);
+        color: white;
+        padding: 6px 10px;
+        border-radius: 6px;
+        font-size: 14px;
+      "
+    >
+      Source: __ENERGY_SOURCE__
+    </div>
+  </body>
 </html>

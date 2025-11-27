@@ -8,7 +8,7 @@ import calendar
 import pydeck as pdk
 import geopandas as gpd
 import streamlit.components.v1 as components
-from shapely.geometry import LineString
+from shapely.geometry import LineString, Point
 import json
 
 
@@ -1243,6 +1243,7 @@ with main_col:
         with open("../map/data/elec_to_houses.geojson", "r", encoding="utf-8") as f:
             pipe = json.load(f)
         nodes, edges = load_map_data()
+       
 
         nodes_json = nodes.to_json()
         edges_json = edges.to_json()
@@ -1266,11 +1267,66 @@ with main_col:
             props["tooltip"] = f"H₂ to houses | {h2_total:,.0f} kg/yr"
 
         pipeline_json = json.dumps(fc)
+        
+        # =======================
+        # Create warnings
+        # =======================
+        
+        warnings_df = gpd.GeoDataFrame()
+        warnings_df = warnings_df._append(nodes[nodes["id"] == "ELEC-01"]) # add Electrolyzer to warnings
+        warnings_df.loc[warnings_df["id"] == "ELEC-01", "warning"] = f"CO2 avoided: {co2_avoided_kg:,.2f} kg/yr"
+        
+        houses = ["AADORP-20", "AADORP-31", "AADORP-46"] 
+        houses_selection = nodes[nodes["id"].isin(houses)]
+        houses_selection = houses_selection.union_all().centroid # get centroid of houses
+        print(houses_selection)
+        houses_centroid = gpd.GeoDataFrame(
+                            [{"id": "HOU",
+                              "name": "Houses",
+                            "type": "House",
+                            "warning": f"Seasonal coverage: {seasonal_coverage_pct:,.0f}%",
+                            }],
+                            geometry=[houses_selection],
+                            crs="EPSG:4326",
+                            
+            )    
+        warnings_df = warnings_df._append(houses_centroid) # add houses to warnings
+        
+        pipe_centroid = gpd.GeoDataFrame(
+                            [{"id": "PIPE",
+                              "name": "Pipeline",
+                            "type": "Pipeline",
+                            "warning": f"Total H2 stored: {h2_stored_kg.sum():,.0f} kg",
+                            }],
+                            geometry=[Point(6.64170, 52.36750)],
+                            crs="EPSG:4326",
+                            
+            )
+        
+        warnings_df = warnings_df._append(pipe_centroid)
+        warnings_df = warnings_df.drop(columns=["fid", "lon", "lat"])
+        warnings_df = warnings_df.rename(columns={"id": "node_id"})
+        warnings_df = warnings_df.set_geometry("geometry")
+        warnings_df = warnings_df.reset_index(drop=True)
+        warnings_json = warnings_df.to_json(drop_id=True)
+        
+        print(f"****************Warnings: ",warnings_json)
+        
+       
+        
+        
+        
+        # =======================
+        # SEND TO MAP
+        # =======================
+        
 
         mapbox_html = mapbox_html.replace("__NODES__", nodes_json)
         mapbox_html = mapbox_html.replace("__EDGES__", edges_json)
         mapbox_html = mapbox_html.replace("__PIPELINE__", pipeline_json)
         mapbox_html = mapbox_html.replace("__ENERGY_SOURCE__", str(energy_source))
+        mapbox_html = mapbox_html.replace("__WARNINGS__", warnings_json)
+        
 
         components.html(mapbox_html, height=600, scrolling=False)
 
