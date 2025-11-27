@@ -576,6 +576,33 @@ soc_min_kwh = float(storage_soc_kwh.min()) if storage_soc_kwh.size else 0.0
 soc_max_kwh = float(storage_soc_kwh.max()) if storage_soc_kwh.size else 0.0
 approx_cycles = (charged_kwh.sum() * ETA_CHG) / max(bat_cap_kwh, 1) if enable_battery and bat_cap_kwh > 0 else 0
 
+# --- Split EL input by renewable source for map flows ---
+solar_raw_annual = monthly_solar_kwh_raw.sum()
+wind_raw_annual  = monthly_wind_kwh_raw.sum()
+res_raw_annual   = monthly_res_kwh_raw.sum()
+
+if energy_source == "Solar Only":
+    solar_to_h2_kwh = float(annual_total_kwh_to_el)
+    wind_to_h2_kwh  = 0.0
+
+elif energy_source == "Wind Only":
+    wind_to_h2_kwh  = float(annual_total_kwh_to_el)
+    solar_to_h2_kwh = 0.0
+
+elif energy_source in ["Energy Mix (Solar + Wind)", "Energy Mix (Solar + Wind)", "Solar + Wind (Baseline)"]:
+    if res_raw_annual > 0:
+        solar_share = solar_raw_annual / res_raw_annual
+        wind_share  = wind_raw_annual  / res_raw_annual
+    else:
+        solar_share = wind_share = 0.0
+
+    solar_to_h2_kwh = float(annual_total_kwh_to_el * solar_share)
+    wind_to_h2_kwh  = float(annual_total_kwh_to_el * wind_share)
+
+else:  # "Grid Only"
+    solar_to_h2_kwh = 0.0
+    wind_to_h2_kwh  = 0.0
+
 # =======================
 # BATTERY DIAGNOSTICS TABLE (MONTHLY)
 # =======================
@@ -1052,8 +1079,6 @@ def show_battery_dialog():
         st.rerun()  # rerun app, and since we don't call the dialog again, it closes
 
 
-
-
 # =======================
 # MAP DATA LOADING
 # =====================
@@ -1080,7 +1105,7 @@ def load_map_data():
         ["to_id", "to_lon", "to_lat"]
     ]
     df_flows = df_flows.merge(src, on="from_id", how="left").merge(dst, on="to_id", how="left")
-  
+
     df_flows = df_flows.drop_duplicates(subset=["from_id", "to_id", "flow_type"])
 
     # --- Assign colors by flow type ---
@@ -1093,14 +1118,6 @@ def load_map_data():
     }
     df_flows["color"] = df_flows["flow_type"].map(COLOR_BY_TYPE)
 
-    # # Build a concise tooltip per flow (adjust fields if your CSV differs)
-    # df_flows["tooltip"] = (
-    #         df_flows["flow_type"].astype(str) + ": " +
-    #         df_flows["from_id"].astype(str) + " → " + df_flows["to_id"].astype(str) +
-    #         np.where(df_flows.get("value").notna(), " | " + df_flows["value"].astype(str), "") +
-    #         np.where(df_flows.get("unit").notna(), " " + df_flows["unit"].astype(str), "")
-    # )
-
     # --- Create LineString geometry for each edge ---
     gdf_edges = gpd.GeoDataFrame(
         df_flows,
@@ -1110,23 +1127,104 @@ def load_map_data():
         ),
         crs="EPSG:4326",
     )
+    # =======================
+    # Attach KPI-driven annual values to specific edges
+    # =======================
 
-    
-    gdf_edges.loc[(gdf_edges["from_id"] == "WIND-01") & (gdf_edges["to_id"] == "BATTERY-01"), "value"] = monthly_wind_kwh_raw # TODO: check if this is correct
-    gdf_edges.loc[(gdf_edges["from_id"] == "SOLAR-01") & (gdf_edges["to_id"] == "BATTERY-01"), "value"] = monthly_solar_kwh_raw # TODO: check if this is correct
-    gdf_edges.loc[(gdf_edges["from_id"] == "BATTERY-01") & (gdf_edges["to_id"] == "ELEC-01"), "value"] = battery_energy_to_el # TODO: check if this is correct
-    gdf_edges.loc[(gdf_edges["from_id"] == "ELEC-01") & (gdf_edges["to_id"] == "WWTP-01"), "value"] = 123.45
-    gdf_edges.loc[(gdf_edges["from_id"] == "WWTP-01") & (gdf_edges["to_id"] == "ELEC-01"), "value"] = 123.45
-    gdf_edges.loc[(gdf_edges["from_id"] == "ELEC-01") & (gdf_edges["to_id"] == "OFFICE-01"), "value"] = total_waste_heat # TODO: check if this is correct
-    gdf_edges.loc[(gdf_edges["from_id"] == "ELEC-01") & (gdf_edges["to_id"] == "CREM-01"), "value"] = 200
-    
-    min_val = gdf_edges["value"].min()
-    max_val = gdf_edges["value"].max()
-  
-    # --- Scale values between 1 and 10 for visualization thicknes---
-    gdf_edges["value_scaled"] = 2 + (gdf_edges["value"] - min_val) * (9 / (max_val - min_val))
-    
-    # gdf_edges["value"] = gdf_edges["value"].apply(lambda x : random.randint(1,10))
+    # Electricity from each RES source actually used in the H₂ chain (kWh/yr)
+    gdf_edges.loc[
+        (gdf_edges["from_id"] == "WIND-01") & (gdf_edges["to_id"] == "BATTERY-01"),
+        "value"
+    ] = float(wind_to_h2_kwh)
+
+    gdf_edges.loc[
+        (gdf_edges["from_id"] == "SOLAR-01") & (gdf_edges["to_id"] == "BATTERY-01"),
+        "value"
+    ] = float(solar_to_h2_kwh)
+
+    gdf_edges.loc[
+        (gdf_edges["from_id"] == "BATTERY-01") & (gdf_edges["to_id"] == "ELEC-01"),
+        "value"
+    ] = float(battery_energy_to_el)  # kWh/yr discharged to EL
+
+    # Waste heat from EL to office (kWh/yr)
+    gdf_edges.loc[
+        (gdf_edges["from_id"] == "ELEC-01") & (gdf_edges["to_id"] == "OFFICE-01"),
+        "value"
+    ] = float(total_waste_heat)
+
+    # O2 reused at WWTP (kg/yr)
+    gdf_edges.loc[
+        (gdf_edges["from_id"] == "ELEC-01") & (gdf_edges["to_id"] == "WWTP-01"),
+        "value"
+    ] = float(o2_reuse_kg)
+
+    # WWTP -> EL (e.g. treated water back) – still placeholder until we define a KPI
+    gdf_edges.loc[
+        (gdf_edges["from_id"] == "WWTP-01") & (gdf_edges["to_id"] == "ELEC-01"),
+        "value"
+    ] = 123.45
+
+    # Crematoria flow – placeholder for now, will later be linked to a crematoria H2 KPI
+    gdf_edges.loc[
+        (gdf_edges["from_id"] == "ELEC-01") & (gdf_edges["to_id"] == "CREM-01"),
+        "value"
+    ] = 200.0
+
+    # Ensure 'value' is numeric
+    gdf_edges["value"] = pd.to_numeric(gdf_edges["value"], errors="coerce")
+
+    # =======================
+    # Units + tooltips for flows
+    # =======================
+    UNIT_BY_TYPE = {
+        "H2": "kg/yr",
+        "O2": "kg/yr",
+        "H2O": "m³/yr",
+        "Waste Heat": "kWh/yr",
+        "Electricity": "kWh/yr",
+    }
+    gdf_edges["unit"] = gdf_edges["flow_type"].map(UNIT_BY_TYPE).fillna("")
+
+    def make_edge_tooltip(row):
+        flow_type = row.get("flow_type", "")
+        from_id = row.get("from_id", "")
+        to_id = row.get("to_id", "")
+        unit = row.get("unit", "")
+        val = row.get("value", np.nan)
+
+        header = f"{flow_type} | {from_id} → {to_id}".strip(" |")
+
+        if pd.isna(val):
+            return header
+
+        val_str = f"{val:,.0f}"
+        if unit:
+            return f"{header}<br>{val_str} {unit}"
+        else:
+            return f"{header}<br>{val_str}"
+
+    gdf_edges["tooltip"] = gdf_edges.apply(make_edge_tooltip, axis=1)
+
+    # =======================
+    # Scale 'value' to a reasonable line width
+    # =======================
+    valid_values = gdf_edges["value"].dropna()
+    if not valid_values.empty:
+        min_val = valid_values.min()
+        max_val = valid_values.max()
+    else:
+        min_val = 0.0
+        max_val = 1.0  # avoid division by zero
+
+    # Default width
+    gdf_edges["value_scaled"] = 2.0
+
+    if max_val > min_val:
+        span = max_val - min_val
+        gdf_edges.loc[gdf_edges["value"].notna(), "value_scaled"] = (
+                2.0 + (gdf_edges["value"] - min_val) * (9.0 / span)
+        )
 
     return gdf_nodes, gdf_edges
 
@@ -1187,12 +1285,12 @@ with main_col:
             f"""
             <div class="dt-kpi-card">
                 <div class="kpi-header">
-                    <h6>Renewable Electricity Yield
+                    <h6>Renewable Electricity Supply
                         <span class="tooltip">ⓘ
                             <span class="tooltiptext">
-                                Annual renewable electricity allocated to hydrogen.
-                                Includes wind + 30% of PV (as per project assumption).
-                                This power supplies the EL directly first, then charges the battery.
+                                Total renewable electricity available for the hydrogen system 
+                                (wind + 30% PV). This is supply before electrolyser limits, 
+                                battery behaviour, or curtailment.
                             </span>
                         </span>
                     </h6>
