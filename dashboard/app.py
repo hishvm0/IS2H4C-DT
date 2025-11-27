@@ -274,7 +274,7 @@ html, body, [data-testid="stAppViewContainer"] {
   opacity: 1;
 }
 
-.st-dh{
+.st-cz{
     width: 100% !important;
 }
 .dt-kpi-red {
@@ -791,8 +791,8 @@ total_waste_heat    = float(annual_waste_heat_kWh)
 # =======================
 # WARNING MESSAGES
 # ======================
-if total_co2_avoided > total_co2_grid:
-    st.warning('This is a warning', icon="⚠️")
+# if total_co2_avoided > total_co2_grid:
+#     st.warning('This is a warning', icon="⚠️")
 
 # =======================
 # Seasonal coverage risk logic
@@ -831,7 +831,7 @@ else:
 # THRESHOLD: CO₂ EMISSIONS (GRID)
 # =======================
 
-if total_co2_grid > 0:
+if total_co2_grid <= 0:
     co2_grid_color_class = "dt-kpi-red"
     co2_grid_tooltip = (
         "<span style='font-size:11px;'>"
@@ -965,6 +965,94 @@ co2_house_tooltip = (
     f"<span style='font-size:11px;'>{base_text_house}{perf_text_house}</span>"
 )
 
+# =======================
+# BATTERY DIAGNOSTICS VIEW FUNCTION
+# =======================
+@st.dialog("Battery energy flows (diagnostics)")
+def show_battery_dialog():
+    st.caption(
+        "Monthly breakdown of renewable electricity allocated to hydrogen, "
+        "electrolyser cap, energy stored and discharged by the battery, "
+        "renewables used for other site loads, and end-of-month state of charge."
+    )
+
+    # Build monthly table
+    month_labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+    df_battery = pd.DataFrame({
+        "Month": month_labels,
+        "RES available (kWh)": monthly_res_kwh,
+        "EL cap (kWh)": max_monthly_kwh,
+        "Direct to EL (kWh)": np.minimum(monthly_res_kwh, max_monthly_kwh),
+        "Charged to battery (kWh)": charged_kwh,
+        "Discharged from battery (kWh)": discharged_kwh,
+        "RES for other site loads (kWh)": curtailed_kwh,
+        "End-of-month SOC (kWh)": storage_soc_kwh,
+    })
+
+    st.dataframe(
+        df_battery.style.format({
+            "RES available (kWh)": "{:,.0f}",
+            "EL cap (kWh)": "{:,.0f}",
+            "Direct to EL (kWh)": "{:,.0f}",
+            "Charged to battery (kWh)": "{:,.0f}",
+            "Discharged from battery (kWh)": "{:,.0f}",
+            "RES for other site loads (kWh)": "{:,.0f}",
+            "End-of-month SOC (kWh)": "{:,.0f}",
+        }),
+        use_container_width=True,
+    )
+
+    # ---- Battery chart: RES for other loads + SOC (stacked) ----
+    months_order = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+    df_battery["Month"] = pd.Categorical(
+        df_battery["Month"],
+        categories=months_order,
+        ordered=True,
+    )
+    df_battery_sorted = df_battery.sort_values("Month")
+
+    df_chart = df_battery_sorted[
+        ["Month", "RES for other site loads (kWh)", "End-of-month SOC (kWh)"]
+    ].melt(
+        id_vars="Month",
+        var_name="Metric",
+        value_name="value",
+    )
+
+    metric_order = {
+        "End-of-month SOC (kWh)": 0,
+        "RES for other site loads (kWh)": 1,
+    }
+    df_chart["order_num"] = df_chart["Metric"].map(metric_order)
+
+    battery_chart = (
+        alt.Chart(df_chart)
+        .mark_bar()
+        .encode(
+            x=alt.X("Month:O", sort=months_order, title="Month"),
+            y=alt.Y("value:Q", stack="zero", title="Energy (kWh)"),
+            color=alt.Color(
+                "Metric:N",
+                sort=["End-of-month SOC (kWh)", "RES for other site loads (kWh)"],
+            ),
+            order=alt.Order("order_num:Q", sort="ascending"),
+            tooltip=["Month", "Metric", alt.Tooltip("value:Q", format=",.0f")],
+        )
+        .properties(height=260)
+    )
+
+    st.altair_chart(battery_chart, use_container_width=True)
+
+    # Close button for the dialog
+    if st.button("Close battery view", key="btn_close_battery_diag"):
+        st.rerun()  # rerun app, and since we don't call the dialog again, it closes
+
+
+
 
 # =======================
 # MAP DATA LOADING
@@ -1024,12 +1112,12 @@ def load_map_data():
     )
 
     
-    gdf_edges.loc[(gdf_edges["from_id"] == "WIND-01") & (gdf_edges["to_id"] == "BATTERY-01"), "value"] = 123.45
-    gdf_edges.loc[(gdf_edges["from_id"] == "SOLAR-01") & (gdf_edges["to_id"] == "BATTERY-01"), "value"] = 250
-    gdf_edges.loc[(gdf_edges["from_id"] == "BATTERY-01") & (gdf_edges["to_id"] == "ELEC-01"), "value"] = 123
+    gdf_edges.loc[(gdf_edges["from_id"] == "WIND-01") & (gdf_edges["to_id"] == "BATTERY-01"), "value"] = monthly_wind_kwh_raw # TODO: check if this is correct
+    gdf_edges.loc[(gdf_edges["from_id"] == "SOLAR-01") & (gdf_edges["to_id"] == "BATTERY-01"), "value"] = monthly_solar_kwh_raw # TODO: check if this is correct
+    gdf_edges.loc[(gdf_edges["from_id"] == "BATTERY-01") & (gdf_edges["to_id"] == "ELEC-01"), "value"] = battery_energy_to_el # TODO: check if this is correct
     gdf_edges.loc[(gdf_edges["from_id"] == "ELEC-01") & (gdf_edges["to_id"] == "WWTP-01"), "value"] = 123.45
     gdf_edges.loc[(gdf_edges["from_id"] == "WWTP-01") & (gdf_edges["to_id"] == "ELEC-01"), "value"] = 123.45
-    gdf_edges.loc[(gdf_edges["from_id"] == "ELEC-01") & (gdf_edges["to_id"] == "OFFICE-01"), "value"] = total_waste_heat
+    gdf_edges.loc[(gdf_edges["from_id"] == "ELEC-01") & (gdf_edges["to_id"] == "OFFICE-01"), "value"] = total_waste_heat # TODO: check if this is correct
     gdf_edges.loc[(gdf_edges["from_id"] == "ELEC-01") & (gdf_edges["to_id"] == "CREM-01"), "value"] = 200
     
     min_val = gdf_edges["value"].min()
@@ -1037,7 +1125,6 @@ def load_map_data():
   
     # --- Scale values between 1 and 10 for visualization thicknes---
     gdf_edges["value_scaled"] = 2 + (gdf_edges["value"] - min_val) * (9 / (max_val - min_val))
-    print(gdf_edges)
     
     # gdf_edges["value"] = gdf_edges["value"].apply(lambda x : random.randint(1,10))
 
@@ -1275,98 +1362,10 @@ with right_col:
       <span>Shows monthly battery behaviour</span>
     </div>
     """, unsafe_allow_html=True)
+    
+
+    if st.button("View battery flows", key="btn_battery_diag"):
+        show_battery_dialog()
 
 
 
-# =======================
-# BATTERY DIAGNOSTICS VIEW
-# =======================
-@st.dialog("Battery energy flows (diagnostics)")
-def show_battery_dialog():
-    st.caption(
-        "Monthly breakdown of renewable electricity allocated to hydrogen, "
-        "electrolyser cap, energy stored and discharged by the battery, "
-        "renewables used for other site loads, and end-of-month state of charge."
-    )
-
-    # Build monthly table
-    month_labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-
-    df_battery = pd.DataFrame({
-        "Month": month_labels,
-        "RES available (kWh)": monthly_res_kwh,
-        "EL cap (kWh)": max_monthly_kwh,
-        "Direct to EL (kWh)": np.minimum(monthly_res_kwh, max_monthly_kwh),
-        "Charged to battery (kWh)": charged_kwh,
-        "Discharged from battery (kWh)": discharged_kwh,
-        "RES for other site loads (kWh)": curtailed_kwh,
-        "End-of-month SOC (kWh)": storage_soc_kwh,
-    })
-
-    st.dataframe(
-        df_battery.style.format({
-            "RES available (kWh)": "{:,.0f}",
-            "EL cap (kWh)": "{:,.0f}",
-            "Direct to EL (kWh)": "{:,.0f}",
-            "Charged to battery (kWh)": "{:,.0f}",
-            "Discharged from battery (kWh)": "{:,.0f}",
-            "RES for other site loads (kWh)": "{:,.0f}",
-            "End-of-month SOC (kWh)": "{:,.0f}",
-        }),
-        use_container_width=True,
-    )
-
-    # ---- Battery chart: RES for other loads + SOC (stacked) ----
-    months_order = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-
-    df_battery["Month"] = pd.Categorical(
-        df_battery["Month"],
-        categories=months_order,
-        ordered=True,
-    )
-    df_battery_sorted = df_battery.sort_values("Month")
-
-    df_chart = df_battery_sorted[
-        ["Month", "RES for other site loads (kWh)", "End-of-month SOC (kWh)"]
-    ].melt(
-        id_vars="Month",
-        var_name="Metric",
-        value_name="value",
-    )
-
-    metric_order = {
-        "End-of-month SOC (kWh)": 0,
-        "RES for other site loads (kWh)": 1,
-    }
-    df_chart["order_num"] = df_chart["Metric"].map(metric_order)
-
-    battery_chart = (
-        alt.Chart(df_chart)
-        .mark_bar()
-        .encode(
-            x=alt.X("Month:O", sort=months_order, title="Month"),
-            y=alt.Y("value:Q", stack="zero", title="Energy (kWh)"),
-            color=alt.Color(
-                "Metric:N",
-                sort=["End-of-month SOC (kWh)", "RES for other site loads (kWh)"],
-            ),
-            order=alt.Order("order_num:Q", sort="ascending"),
-            tooltip=["Month", "Metric", alt.Tooltip("value:Q", format=",.0f")],
-        )
-        .properties(height=260)
-    )
-
-    st.altair_chart(battery_chart, use_container_width=True)
-
-    # Close button for the dialog
-    if st.button("Close battery view", key="btn_close_battery_diag"):
-        st.rerun()  # rerun app, and since we don't call the dialog again, it closes
-
-
-# =======================
-# OPEN DIALOG BUTTON
-# =======================
-if st.button("View battery flows", key="btn_battery_diag"):
-    show_battery_dialog()
