@@ -358,7 +358,7 @@ body { margin: 0; padding: 0; }
             'source': 'nodes',
             'layout': {
                 'icon-image': 'node-icon',
-                'icon-size': 0.3,
+                'icon-size': 0.2,
                 'icon-allow-overlap': true
             }
         });
@@ -367,9 +367,12 @@ body { margin: 0; padding: 0; }
         // ADD 3D Turbine
         // =======================
 
+function add3DModel(name, lat, lon, url, scale, altitude) {
+        console.log('Adding 3D model:', name, lat, lon, url, scale, altitude);
+
          // 1. Origin of the model (your coordinates)
-        const modelOrigin = [6.648364042976962, 52.36539819191749]; // [lng, lat]
-        const modelAltitude = 0; // meters
+        const modelOrigin = [lon, lat]; // [lng, lat]
+        const modelAltitude = altitude; // meters
         const modelRotate = [Math.PI / 2, 0, 0]; // rotate from Z-up to Mapbox's coord system
 
         // Convert to Mercator coordinates
@@ -392,8 +395,8 @@ body { margin: 0; padding: 0; }
 
         const THREE = window.THREE;
 
-        const customLayer = {
-          id: 'gbl-model-layer',   // can be any id
+        return {
+          id: name,   // can be any id
           type: 'custom',
           renderingMode: '3d',
 
@@ -412,8 +415,7 @@ body { margin: 0; padding: 0; }
             light2.position.set(0, 70, 100).normalize();
             this.scene.add(light2);
 
-            const modelUrl =
-            'https://raw.githubusercontent.com/ivan-cardenas/ivan-cardenas.github.io/main/assets/3dModel/animated_wind_turbine.glb';
+            const modelUrl = url;
 
             // Load your GLB / GLTF model here
             const loader = new THREE.GLTFLoader();
@@ -422,7 +424,7 @@ body { margin: 0; padding: 0; }
               (gltf) => {
                   console.log('Model loaded', gltf);
                   this.model = gltf.scene;
-                  this.model.scale.set(0.01, 0.01, 0.01);
+                  this.model.scale.set(scale, scale, scale);
                   this.scene.add(this.model);
 
                   // 🔥 ANIMATION SETUP
@@ -500,8 +502,25 @@ body { margin: 0; padding: 0; }
             this.map.triggerRepaint();
           }
         };
+      };
+    
+    map.addLayer(add3DModel('Turbine', 
+    52.36539819191749, 6.648364042976962,
+    'https://raw.githubusercontent.com/ivan-cardenas/ivan-cardenas.github.io/main/assets/3dModel/animated_wind_turbine.glb',
+    0.01,0
+    ));
 
-        map.addLayer(customLayer);
+    map.addLayer(add3DModel('solar-panel', 
+    52.364762552619894, 6.649536724001674,
+    'https://raw.githubusercontent.com/ivan-cardenas/ivan-cardenas.github.io/main/assets/3dModel/SolarPanel.glb',
+    0.05,10
+    ));
+
+    map.addLayer(add3DModel('battery', 
+    52.36602309567385, 6.6482971939360285,
+    'https://raw.githubusercontent.com/ivan-cardenas/ivan-cardenas.github.io/main/assets/3dModel/battery_48tl200.glb',
+    0.3,10
+    ));
 
 
 // --- Listen for messages to update the map without reloading ---

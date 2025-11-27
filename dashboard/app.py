@@ -1112,9 +1112,9 @@ def load_map_data():
     )
 
     
-    gdf_edges.loc[(gdf_edges["from_id"] == "WIND-01") & (gdf_edges["to_id"] == "BATTERY-01"), "value"] = monthly_wind_kwh_raw # TODO: check if this is correct
-    gdf_edges.loc[(gdf_edges["from_id"] == "SOLAR-01") & (gdf_edges["to_id"] == "BATTERY-01"), "value"] = monthly_solar_kwh_raw # TODO: check if this is correct
-    gdf_edges.loc[(gdf_edges["from_id"] == "BATTERY-01") & (gdf_edges["to_id"] == "ELEC-01"), "value"] = battery_energy_to_el # TODO: check if this is correct
+    gdf_edges.loc[(gdf_edges["from_id"] == "WIND-01") & (gdf_edges["to_id"] == "BATTERY-01"), "value"] = monthly_wind_kwh_raw.sum() # TODO: check if this is correct
+    gdf_edges.loc[(gdf_edges["from_id"] == "SOLAR-01") & (gdf_edges["to_id"] == "BATTERY-01"), "value"] = monthly_solar_kwh_raw.sum() # TODO: check if this is correct
+    gdf_edges.loc[(gdf_edges["from_id"] == "BATTERY-01") & (gdf_edges["to_id"] == "ELEC-01"), "value"] = battery_energy_to_el.sum() # TODO: check if this is correct
     gdf_edges.loc[(gdf_edges["from_id"] == "ELEC-01") & (gdf_edges["to_id"] == "WWTP-01"), "value"] = 123.45
     gdf_edges.loc[(gdf_edges["from_id"] == "WWTP-01") & (gdf_edges["to_id"] == "ELEC-01"), "value"] = 123.45
     gdf_edges.loc[(gdf_edges["from_id"] == "ELEC-01") & (gdf_edges["to_id"] == "OFFICE-01"), "value"] = total_waste_heat # TODO: check if this is correct
