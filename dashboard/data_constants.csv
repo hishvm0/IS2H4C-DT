@@ -10,10 +10,10 @@ em_factor_ng_kg_per_kwh,"CO? emission factor (natural gas, LHV)",0.202,kg CO?/kW
 boiler_efficiency,Reference boiler efficiency,0.95,_
 a_demand_ref_kwh_per_m2,A-rated reference heat demand,75,kWh/m2-year
 total_heated_area_m2,Total heated floor area (5 houses),1534,m2
-house1_area_m2,House 1 floor area,230,m2
-house2_area_m2,House 2 floor area,229,m2
-house3_area_m2,House 3 floor area,478,m2
-house4_area_m2,House 4 floor area,597,m2
+house1_area_m2,Albardastraat 34,230,m2
+house2_area_m2,Albardastraat 31,229,m2
+house3_area_m2,Albardastraat 20,478,m2
+house4_area_m2,Albardastraat 46,597,m2
 battery_cap_baseline_kwh,Baseline battery capacity,1400,kWh
 battery_eta_charge,Battery charge efficiency,0.95,_
 battery_eta_discharge,Battery discharge efficiency,0.95,_
@@ -21,3 +21,7 @@ h2_storage_capacity_kg,H? storage capacity,60,kg H?
 heat_recovery_frac,Fraction of EL input recoverable as low-T heat,0.30,_
 o2_per_kg_h2,O? produced per kg H?,8,kg O?/kg H?
 wwtp_o2_demand_annual,WWTP annual oxygen demand,7875240,kg O?/year
+house1_h2_demand_kg,Albardastraat 34 – annual H₂ demand,615,kg H₂/year
+house2_h2_demand_kg,Albardastraat 31 – annual H₂ demand,752,kg H₂/year
+house3_h2_demand_kg,Albardastraat 20 – annual H₂ demand,2735,kg H₂/year
+house4_h2_demand_kg,Albardastraat 46 – annual H₂ demand,820,kg H₂/year

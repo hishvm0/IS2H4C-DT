@@ -760,47 +760,29 @@
         rafId = requestAnimationFrame(animateDashArray);
 
         // ------- ADD WARNING LABELS -------
-        const warnings = JSON.parse(document.getElementById("warnings-data").textContent.trim());
-        
-
-        const co2_warning = warnings.features.find(
-          (f) => f.properties.node_id === "ELEC-01"
+        const warnings = JSON.parse(
+          document.getElementById("warnings-data").textContent.trim()
         );
-        const co2_warning_value = co2_warning.properties.warning;
-        const co2_coords = co2_warning.geometry.coordinates;
 
-        const el = document.createElement("div");
-        el.className = "warning-label";
-        el.innerText = co2_warning_value;
-       
-
-        new mapboxgl.Marker(el).setLngLat(co2_coords).addTo(map).setDraggable(true).setAltitude(100);
-
+        // Only one warning now: seasonal coverage over houses (node_id = "HOU")
         const h2_warning = warnings.features.find(
           (f) => f.properties.node_id === "HOU"
         );
-        const h2_warning_value = h2_warning.properties.warning;
-        const h2_coords = h2_warning.geometry.coordinates;
 
-        const houses_h2 = document.createElement("div");
-        houses_h2.className = "warning-label";
-        houses_h2.innerText = h2_warning_value;
-        console.log(houses_h2);
-        
-        new mapboxgl.Marker(houses_h2).setLngLat(h2_coords).addTo(map).setDraggable(true).setAltitude(100);
+        if (h2_warning) {
+          const h2_warning_value = h2_warning.properties.warning;
+          const h2_coords = h2_warning.geometry.coordinates;
 
-        const pipe_warning = warnings.features.find(
-          (f) => f.properties.node_id === "PIPE"
-        );
-        const pipe_warning_value = pipe_warning.properties.warning;
-        const pipe_coords = pipe_warning.geometry.coordinates;
+          const houses_h2 = document.createElement("div");
+          houses_h2.className = "warning-label";
+          houses_h2.innerText = h2_warning_value;
 
-        const pipe = document.createElement("div");
-        pipe.className = "warning-label";
-        pipe.innerText = pipe_warning_value;
-        console.log(pipe);
-        
-        new mapboxgl.Marker(pipe).setLngLat(pipe_coords).addTo(map).setDraggable(true).setAltitude(100);
+          new mapboxgl.Marker(houses_h2)
+            .setLngLat(h2_coords)
+            .addTo(map)
+            .setDraggable(true);
+        }
+
 
         // END OF ON LOAD MAP
       });

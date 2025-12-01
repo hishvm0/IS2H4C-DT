@@ -122,7 +122,6 @@ st.markdown("""
 }
 
 /* ========== TOOLTIP ========== */
-/* ---------- TOOLTIP (generic, used in KPI headers) ---------- */
 .tooltip {
   position: relative;
   display: inline-flex;
@@ -287,7 +286,24 @@ html, body, [data-testid="stAppViewContainer"] {
 .dt-kpi-amber {
     background-color: #5a4320; 
 }
+/* ===== KPI STATUS ICONS (traffic-light) ===== */
+.kpi-status-icon {
+  font-size: 0.85rem;
+  margin-left: 4px;
+  vertical-align: middle;
+}
 
+.kpi-status-green {
+  color: #65d26e;   /* soft green */
+}
+
+.kpi-status-amber {
+  color: #f4c430;   /* amber */
+}
+
+.kpi-status-red {
+  color: #ff6b6b;   /* red */
+}
 
 </style>
 """, unsafe_allow_html=True)
@@ -332,6 +348,14 @@ HOUSE_AREAS = [
     DATA.loc["house2_area_m2", "value"],
     DATA.loc["house3_area_m2", "value"],
     DATA.loc["house4_area_m2", "value"],
+]
+
+
+HOUSE_DEMANDS = [
+    DATA.loc["house1_h2_demand_kg", "value"],
+    DATA.loc["house2_h2_demand_kg", "value"],
+    DATA.loc["house3_h2_demand_kg", "value"],
+    DATA.loc["house4_h2_demand_kg", "value"],
 ]
 
 H2_STORAGE_CAPACITY_KG = DATA.loc["h2_storage_capacity_kg", "value"]
@@ -801,6 +825,36 @@ else:
     h2_storage_month_max = "-"
     h2_storage_month_min = "-"
 
+# =======================
+# HOUSE META (for map tooltips)
+# =======================
+
+# Map node IDs to constants rows (order matches HOUSE_AREAS / HOUSE_DEMANDS / co2_avoided_per_house_list)
+HOUSE_NODE_IDS = ["AADORP-34", "AADORP-31", "AADORP-20", "AADORP-46"]
+
+HOUSE_TYPES = [
+    "Residential",        # Albardastraat 34
+    "Residential",        # Albardastraat 31
+    "Community centre",   # Albardastraat 20
+    "Residential",        # Albardastraat 46
+]
+
+HOUSE_LABELS = [
+    DATA.loc["house1_area_m2", "name"],  # "Albardastraat 34"
+    DATA.loc["house2_area_m2", "name"],  # "Albardastraat 31"
+    DATA.loc["house3_area_m2", "name"],  # "Albardastraat 20"
+    DATA.loc["house4_area_m2", "name"],  # "Albardastraat 46"
+]
+
+HOUSE_INFO = {}
+for i, node_id in enumerate(HOUSE_NODE_IDS):
+    HOUSE_INFO[node_id] = {
+        "label": HOUSE_LABELS[i],
+        "type": HOUSE_TYPES[i],
+        "area_m2": float(HOUSE_AREAS[i]),
+        "h2_demand_kg": float(HOUSE_DEMANDS[i]),
+        "co2_avoided_kg": float(co2_avoided_per_house_list[i]),
+    }
 
 # =======================
 # LAYOUT: KPIs, MAP, CHARTS
@@ -816,10 +870,21 @@ total_waste_heat    = float(annual_waste_heat_kWh)
 
 
 # =======================
-# WARNING MESSAGES
-# ======================
-# if total_co2_avoided > total_co2_grid:
-#     st.warning('This is a warning', icon="⚠️")
+# KPI STATUS ICON MAPPING
+# =======================
+def kpi_icon_and_class(color_class: str):
+    """
+    Map the KPI background colour class to a small traffic-light icon
+    and a CSS class for colouring the icon.
+    """
+    if "dt-kpi-green" in str(color_class):
+        return "✔", "kpi-status-green"
+    elif "dt-kpi-amber" in str(color_class):
+        return "⚠", "kpi-status-amber"
+    elif "dt-kpi-red" in str(color_class):
+        return "⛔", "kpi-status-red"
+    else:
+        return "", ""
 
 # =======================
 # Seasonal coverage risk logic
@@ -858,7 +923,10 @@ else:
 # THRESHOLD: CO₂ EMISSIONS (GRID)
 # =======================
 
-if total_co2_grid <= 0:
+EPS = 1e-3  # small tolerance so 0.0000001 doesn't count as "emissions"
+
+if total_co2_grid > EPS:
+    # We *are* emitting CO₂ from grid electricity → BAD
     co2_grid_color_class = "dt-kpi-red"
     co2_grid_tooltip = (
         "<span style='font-size:11px;'>"
@@ -867,6 +935,7 @@ if total_co2_grid <= 0:
         "</span>"
     )
 else:
+    # No (or negligible) grid emissions → GOOD
     co2_grid_color_class = "dt-kpi-green"
     co2_grid_tooltip = (
         "<span style='font-size:11px;'>"
@@ -929,44 +998,46 @@ else:
     )
 
 # =======================
-# THRESHOLD: CO₂ Emissions Avoided
+# THRESHOLD: CO₂ Emissions Avoided (DISABLED FOR NOW)
 # =======================
-co2_val = float(co2_avoided_kg)
 
-base_text = (
-    "CO₂ avoided by supplying heat with green hydrogen instead of grid electricity. "
-)
+# co2_val = float(co2_avoided_kg)
 
-if co2_val == 0:
-    co2_avoided_color_class = "dt-kpi-red"
-    perf_text = (
-        "The hub does not currently deliver a decarbonisation benefit "
-        "(hydrogen use or renewables input may be too low)."
-    )
-elif co2_val > 50_000:
-    co2_avoided_color_class = "dt-kpi-green"
-    perf_text = (
-        "Strong yearly CO₂ reduction (>50,000 kg/yr); compare this with "
-        "your site sustainability targets."
-    )
-else:
-    co2_avoided_color_class = ""  # neutral card
-    perf_text = (
-        "Some CO₂ savings are achieved; use this value as a reference against your "
-        "CO₂ reduction targets."
-    )
+# base_text = (
+#     "CO₂ avoided by supplying heat with green hydrogen instead of grid electricity. "
+# )
 
-co2_avoided_tooltip = (
-    f"<span style='font-size:11px;'>{base_text}{perf_text}</span>"
-)
+# if co2_val == 0:
+#     co2_avoided_color_class = "dt-kpi-red"
+#     perf_text = (
+#         "The hub does not currently deliver a decarbonisation benefit "
+#         "(hydrogen use or renewables input may be too low)."
+#     )
+# elif co2_val > 50_000:
+#     co2_avoided_color_class = "dt-kpi-green"
+#     perf_text = (
+#         "Strong yearly CO₂ reduction (>50,000 kg/yr); compare this with "
+#         "your site sustainability targets."
+#     )
+# else:
+#     co2_avoided_color_class = ""
+#     perf_text = (
+#         "Some CO₂ savings are achieved; use this value as a reference against your "
+#         "CO₂ reduction targets."
+#     )
+
+# co2_avoided_tooltip = (
+#     f"<span style='font-size:11px;'>{base_text}{perf_text}</span>"
+# )
+
 # =======================
 # THRESHOLD: CO₂ Avoided per House
 # =======================
 avg_house_val = float(co2_avoided_per_house_avg)
 
 base_text_house = (
-    "Average CO₂ avoided per demo house compared to natural gas heating "
-    "(A-label reference, area-weighted). "
+    "Average CO₂ avoided per house compared to natural gas heating "
+    "(A-label reference, area). "
 )
 
 if avg_house_val == 0:
@@ -1078,6 +1149,10 @@ def show_battery_dialog():
     if st.button("Close battery view", key="btn_close_battery_diag"):
         st.rerun()  # rerun app, and since we don't call the dialog again, it closes
 
+seasonal_icon, seasonal_icon_class = kpi_icon_and_class(seasonal_color)
+h2_storage_icon, h2_storage_icon_class = kpi_icon_and_class(h2_storage_color_class)
+co2_grid_icon, co2_grid_icon_class = kpi_icon_and_class(co2_grid_color_class)
+co2_house_icon, co2_house_icon_class = kpi_icon_and_class(co2_house_color_class)
 
 # =======================
 # MAP DATA LOADING
@@ -1127,6 +1202,24 @@ def load_map_data():
         ),
         crs="EPSG:4326",
     )
+
+    # ------ Attach rich tooltips for houses ------
+    def make_node_tooltip(row):
+        node_id = row.get("id")
+        if node_id in HOUSE_INFO:
+            info = HOUSE_INFO[node_id]
+            return (
+                f"{info['label']} ({info['type']})<br>"
+                f"Floor area: {info['area_m2']:.0f} m²<br>"
+                f"Annual H₂ demand: {info['h2_demand_kg']:.0f} kg/yr<br>"
+                f"CO₂ avoided: {info['co2_avoided_kg']:.0f} kg CO₂/yr"
+            )
+        # fallback for non-house nodes
+        return row.get("name", "")
+
+    gdf_nodes["tooltip"] = gdf_nodes.apply(make_node_tooltip, axis=1)
+
+
     # =======================
     # Attach KPI-driven annual values to specific edges
     # =======================
@@ -1272,50 +1365,27 @@ with main_col:
         # Create warnings
         # =======================
         
-        warnings_df = gpd.GeoDataFrame()
-        warnings_df = warnings_df._append(nodes[nodes["id"] == "ELEC-01"]) # add Electrolyzer to warnings
-        warnings_df.loc[warnings_df["id"] == "ELEC-01", "warning"] = f"CO2 avoided: {co2_avoided_kg:,.2f} kg/yr"
-        
-        houses = ["AADORP-20", "AADORP-31", "AADORP-46"] 
+        # Get centroid of the 3 demo houses
+        houses = ["AADORP-20", "AADORP-31", "AADORP-46"]
         houses_selection = nodes[nodes["id"].isin(houses)]
-        houses_selection = houses_selection.union_all().centroid # get centroid of houses
-        print(houses_selection)
-        houses_centroid = gpd.GeoDataFrame(
-                            [{"id": "HOU",
-                              "name": "Houses",
-                            "type": "House",
-                            "warning": f"Seasonal coverage: {seasonal_coverage_pct:,.0f}%",
-                            }],
-                            geometry=[houses_selection],
-                            crs="EPSG:4326",
-                            
-            )    
-        warnings_df = warnings_df._append(houses_centroid) # add houses to warnings
-        
-        pipe_centroid = gpd.GeoDataFrame(
-                            [{"id": "PIPE",
-                              "name": "Pipeline",
-                            "type": "Pipeline",
-                            "warning": f"Total H2 stored: {h2_stored_kg.sum():,.0f} kg",
-                            }],
-                            geometry=[Point(6.64170, 52.36750)],
-                            crs="EPSG:4326",
-                            
-            )
-        
-        warnings_df = warnings_df._append(pipe_centroid)
-        warnings_df = warnings_df.drop(columns=["fid", "lon", "lat"])
-        warnings_df = warnings_df.rename(columns={"id": "node_id"})
-        warnings_df = warnings_df.set_geometry("geometry")
-        warnings_df = warnings_df.reset_index(drop=True)
+        houses_selection = houses_selection.union_all().centroid  # centroid of houses
+
+        # Single warning feature: seasonal coverage over houses
+        warnings_df = gpd.GeoDataFrame(
+            [
+                {
+                    "node_id": "HOU",
+                    "name": "Houses",
+                    "type": "House",
+                    "warning": f"Seasonal coverage: {seasonal_coverage_pct:,.0f}%",
+                }
+            ],
+            geometry=[houses_selection],
+            crs="EPSG:4326",
+        )
+
         warnings_json = warnings_df.to_json(drop_id=True)
-        
-        print(f"****************Warnings: ",warnings_json)
-        
-       
-        
-        
-        
+        print("****************Warnings: ", warnings_json)
         # =======================
         # SEND TO MAP
         # =======================
@@ -1394,42 +1464,25 @@ with main_col:
             unsafe_allow_html=True,
         )
 
-    # 4. CO₂ Emissions Avoided (total, vs grid heat for green H₂)
+
+    # 4. CO₂ Avoided per House (area-weighted)
     with bottom_cols[3]:
         st.markdown(
             f"""
-                <div class="dt-kpi-card {co2_avoided_color_class}">
-                  <h6>
-                    CO₂ Emissions Avoided
-                    <span class="tooltip">ⓘ
-                      <span class="tooltiptext">{co2_avoided_tooltip}</span>
-                    </span>
-                  </h6>
-                  <p>{co2_avoided_kg:,.0f}</p>
-                  <span>kg CO₂/yr (green H₂ vs grid heat)</span>
-                </div>
+            <div class="dt-kpi-card {co2_house_color_class}">
+              <h6>
+                CO₂ Avoided per House
+                <span class="tooltip">ⓘ
+                  <span class="tooltiptext">{co2_house_tooltip}</span>
+                </span>
+                {f'<span class="kpi-status-icon {co2_house_icon_class}">{co2_house_icon}</span>' if co2_house_icon else ''}
+              </h6>
+              <p>{co2_avoided_per_house_avg:,.0f}</p>
+              <span>kg CO₂/house·yr</span>
+            </div>
             """,
             unsafe_allow_html=True,
         )
-
-    # 5. CO₂ Avoided per House (area-weighted)
-    with bottom_cols[4]:
-        st.markdown(
-            f"""
-                <div class="dt-kpi-card {co2_house_color_class}">
-                  <h6>
-                    CO₂ Avoided per House
-                    <span class="tooltip">ⓘ
-                      <span class="tooltiptext">{co2_house_tooltip}</span>
-                    </span>
-                  </h6>
-                  <p>{co2_avoided_per_house_avg:,.0f}</p>
-                  <span>kg CO₂/house·yr</span>
-                </div>
-                """,
-            unsafe_allow_html=True,
-        )
-
 # ===== RIGHT COLUMN: 5 PRIORITY KPI CARDS =====
 with right_col:
     # 1. Hydrogen Production
@@ -1458,6 +1511,7 @@ with right_col:
             <span class="tooltip">ⓘ
               <span class="tooltiptext">{seasonal_status}</span>
             </span>
+            {f'<span class="kpi-status-icon {seasonal_icon_class}">{seasonal_icon}</span>' if seasonal_icon else ''}
           </h6>
           <p>{seasonal_coverage_pct:.0f}%</p>
           <span>of annual H₂ demand met</span>
@@ -1475,6 +1529,7 @@ with right_col:
             <span class="tooltip">ⓘ
               <span class="tooltiptext">{tooltip_text}</span>
             </span>
+            {f'<span class="kpi-status-icon {h2_storage_icon_class}">{h2_storage_icon}</span>' if h2_storage_icon else ''}
           </h6>
           <p>{headline_pct:.0f}%</p>
           <span>of {H2_STORAGE_CAPACITY_KG:.0f} kg buffer (monthly model)</span>
@@ -1483,7 +1538,7 @@ with right_col:
         unsafe_allow_html=True,
     )
 
-    # 5. CO₂ Emissions (Grid) — with threshold styling
+    # 4. CO₂ Emissions (Grid) — with threshold styling
     st.markdown(
         f"""
         <div class="dt-kpi-card {co2_grid_color_class}">
@@ -1492,6 +1547,7 @@ with right_col:
             <span class="tooltip">ⓘ
               <span class="tooltiptext">{co2_grid_tooltip}</span>
             </span>
+            {f'<span class="kpi-status-icon {co2_grid_icon_class}">{co2_grid_icon}</span>' if co2_grid_icon else ''}
           </h6>
           <p>{total_co2_grid:,.0f}</p>
           <span>kg CO₂/yr from grid input</span>
