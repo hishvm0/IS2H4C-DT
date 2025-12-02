@@ -23,6 +23,14 @@ st.set_page_config(
 )
 
 # =======================
+# SCENARIO STATE
+# =======================
+if "scenario_choice" not in st.session_state:
+    st.session_state.scenario_choice = "Make your own scenario"
+
+scenario_choice = st.session_state["scenario_choice"]
+
+# =======================
 # UI STATE
 # =======================
 if "show_battery_diag" not in st.session_state:
@@ -392,6 +400,7 @@ demand_share_arr = np.array([0.1969, 0.1615, 0.1240, 0.0955, 0.0389, 0.0135,
 # =======================
 # SIDEBAR — SCENARIO CONTROLS
 # =======================
+controls_locked = scenario_choice != "Make your own scenario"
 
 with st.sidebar:
     st.image(
@@ -399,7 +408,6 @@ with st.sidebar:
         width=130,
     )
 
-    # Smaller title + no extra spacing text
     st.markdown("### DT Dashboard Prototype")
 
     # -------- Energy source --------
@@ -413,18 +421,20 @@ with st.sidebar:
             "Grid Only",
         ],
         index=0,
+        disabled=controls_locked,
     )
 
     st.markdown("---")
 
     # -------- Electrolyser schedule --------
     hours_scenario = st.radio(
-        label="Electrolizer operating hours",
+        label="Electrolyser operating hours",
         options=[
             "Baseline: 8 h/day on weekdays",
             "Custom",
         ],
         index=0,
+        disabled=controls_locked,
     )
 
     if hours_scenario == "Custom":
@@ -434,6 +444,7 @@ with st.sidebar:
             max_value=24,
             value=8,
             step=1,
+            disabled=controls_locked,
         )
     else:
         op_hours = 8
@@ -441,7 +452,25 @@ with st.sidebar:
     op_hours_val = op_hours
 
     st.markdown("---")
+# =======================
+# APPLY SCENARIO PRESETS
+# =======================
 
+if scenario_choice == "Scenario 1":
+    energy_source = "Energy Mix (Solar + Wind)"
+    hours_scenario = "Baseline: 8 h/day on weekdays"
+    op_hours_val = 8
+
+elif scenario_choice == "Scenario 2":
+    energy_source = "Energy Mix (Solar + Wind)"
+    hours_scenario = "Custom"
+    op_hours_val = 24
+
+elif scenario_choice == "Scenario 3":
+    energy_source = "Grid Only"
+    hours_scenario = "Baseline: 8 h/day on weekdays"
+    op_hours_val = 8
+# "Make your own" = keep user selections
 
 # =======================
 # TIME BASES FOR CALCULATION
@@ -965,7 +994,7 @@ if h2_cap > 0:
     elif headline_pct < 60:
         h2_storage_color_class = "dt-kpi-amber"
         threshold_part = (
-            "The buffer is used <b>occasionally</b>. Operation is acceptable but may "
+            "The buffer is used <b>actively in the summer</b>. Operation may "
             "benefit from optimisation."
         )
     elif headline_pct <= 85:
@@ -1323,20 +1352,73 @@ def load_map_data():
 
 
 # Main layout: big map + vertical KPI column
-
 main_col, right_col = st.columns([6, 2], gap="small", vertical_alignment="top")
+
 
 # ===== MAIN COLUMN: MAP + BOTTOM KPI ROW =====
 with main_col:
+    #Scenrio buttons
+    sc1, sc2, sc3, sc4 = st.columns(4, gap="small")
+
+    with sc1:
+        if st.button(
+            "Make your own scenario",
+            key="scenario_btn_0",
+            use_container_width=True,
+            help=(
+                "All controls are unlocked. Choose any energy source and "
+                "electrolyser operating hours to build a custom scenario."
+            ),
+        ):
+            st.session_state.scenario_choice = "Make your own scenario"
+
+    with sc2:
+        if st.button(
+            "Scenario 1",
+            key="scenario_btn_1",
+            use_container_width=True,
+            help=(
+                "Scenario 1 – Baseline hub operation:\n"
+                "Energy source: Energy Mix (Solar + Wind)\n"
+                "Electrolyser: 8 h/day on weekdays"
+            ),
+        ):
+            st.session_state.scenario_choice = "Scenario 1"
+
+    with sc3:
+        if st.button(
+            "Scenario 2",
+            key="scenario_btn_2",
+            use_container_width=True,
+            help=(
+                "Scenario 2 – Overproduction risk:\n"
+                "Energy source: Energy Mix (Solar + Wind)\n"
+                "Electrolyser: 24 h/day (Custom)\n"
+                "Highlights potential seasonal oversupply."
+            ),
+        ):
+            st.session_state.scenario_choice = "Scenario 2"
+
+    with sc4:
+        if st.button(
+            "Scenario 3",
+            key="scenario_btn_3",
+            use_container_width=True,
+            help=(
+                "Scenario 3 – Grid fallback:\n"
+                "Energy source: Grid Only\n"
+                "Electrolyser: 8 h/day on weekdays\n"
+                "Shows CO₂ impact of relying on grid electricity."
+            ),
+        ):
+            st.session_state.scenario_choice = "Scenario 3"
     # --- MAP COMPONENT (center, enlarged) ---
-   
     with st.container():
         with open("../map/map_test.html", 'r', encoding="utf-8") as f:
             mapbox_html = f.read()
         with open("../map/data/elec_to_houses.geojson", "r", encoding="utf-8") as f:
             pipe = json.load(f)
         nodes, edges = load_map_data()
-       
 
         nodes_json = nodes.to_json()
         edges_json = edges.to_json()
@@ -1389,7 +1471,6 @@ with main_col:
         # =======================
         # SEND TO MAP
         # =======================
-        
 
         mapbox_html = mapbox_html.replace("__NODES__", nodes_json)
         mapbox_html = mapbox_html.replace("__EDGES__", edges_json)
@@ -1403,15 +1484,14 @@ with main_col:
     st.markdown("")  # small spacer
 
     # --- BOTTOM ROW: 5 KPI CARDS (SECONDARY) ---
-    bottom_cols = st.columns(5, gap="small")
-
+    k1, k2, k3, k4 = st.columns([1, 1, 1, 1], gap="small")
     # 1. Renewable Electricity Yield (from RES, not just what EL uses)
-    with bottom_cols[0]:
+    with k1:
         st.markdown(
             f"""
             <div class="dt-kpi-card">
                 <div class="kpi-header">
-                    <h6>Renewable Electricity Supply
+                    <h6>R. Energy Supply
                         <span class="tooltip">ⓘ
                             <span class="tooltiptext">
                                 Total renewable electricity available for the hydrogen system 
@@ -1429,7 +1509,7 @@ with main_col:
         )
 
     # 2. Recoverable Waste Heat
-    with bottom_cols[1]:
+    with k2:
         st.markdown(
             f"""
                 <div class="dt-kpi-card">
@@ -1447,7 +1527,7 @@ with main_col:
         )
 
     # 3. O₂ Reused (WWTP)
-    with bottom_cols[2]:
+    with k3:
         st.markdown(
             f"""
                 <div class="dt-kpi-card">
@@ -1466,7 +1546,7 @@ with main_col:
 
 
     # 4. CO₂ Avoided per House (area-weighted)
-    with bottom_cols[3]:
+    with k4:
         st.markdown(
             f"""
             <div class="dt-kpi-card {co2_house_color_class}">
@@ -1485,6 +1565,7 @@ with main_col:
         )
 # ===== RIGHT COLUMN: 5 PRIORITY KPI CARDS =====
 with right_col:
+    st.markdown("<div style='height:65px'></div>", unsafe_allow_html=True)
     # 1. Hydrogen Production
     st.markdown(
         f"""
