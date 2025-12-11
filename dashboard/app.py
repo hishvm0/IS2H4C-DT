@@ -10,7 +10,14 @@ import geopandas as gpd
 import streamlit.components.v1 as components
 from shapely.geometry import LineString, Point
 import json
+from pathlib import Path
 
+# Base directories
+THIS_DIR = Path(__file__).resolve().parent            # /dashboard
+ROOT_DIR = THIS_DIR.parent                            # /
+DATA_DIR = THIS_DIR                                   # data_constants.csv is here
+MAP_DIR = ROOT_DIR / "map"                            # /map
+MAP_DATA_DIR = MAP_DIR / "data"                       # /map/data
 
 # =======================
 # PAGE SETUP
@@ -320,7 +327,7 @@ html, body, [data-testid="stAppViewContainer"] {
 # =======================
 # CONSTANTS & FIXED DATA
 # =======================
-DATA = pd.read_csv("data_constants.csv", index_col=0)
+DATA = pd.read_csv(DATA_DIR /"data_constants.csv", index_col=0)
 
 
 # System definition and datasets used in this prototype.
@@ -377,7 +384,7 @@ WWTP_O2_DEMAND = DATA.loc["wwtp_o2_demand_annual", "value"]
 
 MAPBOX_KEY = 'pk.eyJ1IjoiY3lnbnVzMjYiLCJhIjoiY2s5Z2MzeWVvMGx3NTNtbzRnbGtsOXl6biJ9.8SLdJuFQzuN-s4OlHbwzLg'
 STUDIO_STYLE ='mapbox://styles/cygnus26/clsei2b92016j01qqfc143six'
-NODES_GEOJSON="../map/data/nodes.geojson"  # Placeholder path for map data
+NODES_GEOJSON= MAP_DATA_DIR / "nodes.geojson"  # Placeholder path for map data
 map_viewState = pdk.ViewState(
     latitude=52.374,
     longitude=6.642,
@@ -1195,7 +1202,7 @@ def load_map_data():
     gdf_nodes["lat"] = gdf_nodes.geometry.y
 
     # --- Load flow data and attach coordinates ---
-    df_flows = pd.read_csv("../map/data/flows.csv")
+    df_flows = pd.read_csv(MAP_DATA_DIR / "flows.csv")
 
     for c in ("from_id", "to_id", "flow_type"):  # remove the crematoria flow (for now)
         df_flows[c] = df_flows[c].astype(str).str.strip()
@@ -1425,10 +1432,12 @@ with main_col:
 
     # --- MAP COMPONENT (center, enlarged) ---
     with st.container():
-        with open("../map/map_test.html", "r", encoding="utf-8") as f:
+        with open(MAP_DIR / "map_test.html", 'r', encoding="utf-8") as f:
             mapbox_html = f.read()
-        with open("../map/data/elec_to_houses.geojson", "r", encoding="utf-8") as f:
+
+        with open(MAP_DATA_DIR / "elec_to_houses.geojson") as f:
             pipe = json.load(f)
+
         nodes, edges = load_map_data()
 
         nodes_json = nodes.to_json()
