@@ -14,7 +14,7 @@ This repository contains an interactive **Digital Twin Dashboard** built with **
 
 
 ## Authors
-**Hisham Afash** [<img src="https://upload.wikimedia.org/wikipedia/commons/8/81/LinkedIn_icon.svg" height="20"/>](https://www.linkedin.com/in/hisham-afash-200141208/)[<img src="https://upload.wikimedia.org/wikipedia/commons/0/06/ORCID_iD.svg" height="20"/>](https://orcid.org/0009-0005-0245-633X) | University of Twente - BMS Faculty
+**Hisham Afash** [<img src="https://upload.wikimedia.org/wikipedia/commons/8/81/LinkedIn_icon.svg" height="20"/>](https://www.linkedin.com/in/hisham-afash-200141208/)[<img src="https://upload.wikimedia.org/wikipedia/commons/0/06/ORCID_iD.svg" height="20"/>]((https://orcid.org/0009-0007-3127-7298)) | University of Twente - BMS Faculty
 **Iván Cárdenas León**  [<img src="https://upload.wikimedia.org/wikipedia/commons/8/81/LinkedIn_icon.svg" height="20"/>](https://www.linkedin.com/in/ivancardenasleon/) [<img src="https://upload.wikimedia.org/wikipedia/commons/0/06/ORCID_iD.svg" height="20"/>](https://orcid.org/0009-0005-0245-633X) | University of Twente – ITC Faculty
 **Yifei Yu**  [<img src="https://upload.wikimedia.org/wikipedia/commons/0/06/ORCID_iD.svg" height="20"/>](https://orcid.org/0009-0005-0245-633X) | University of Twente - BMS Faculty
 **Devrim Murat Yazan* [<img src="https://upload.wikimedia.org/wikipedia/commons/0/06/ORCID_iD.svg" height="20"/>](https://orcid.org/0009-0005-0245-633X) | University of Twente - BMS Faculty
