@@ -320,7 +320,8 @@ html, body, [data-testid="stAppViewContainer"] {
 # =======================
 # CONSTANTS & FIXED DATA
 # =======================
-DATA = pd.read_csv("dashboard/data_constants.csv", index_col=0)
+DATA = pd.read_csv("data_constants.csv", index_col=0)
+
 
 # System definition and datasets used in this prototype.
 ELECTROLYZER_KW = DATA.loc["el_rated_power_kw", "value"]                      # Electrolyser rated power
@@ -376,7 +377,7 @@ WWTP_O2_DEMAND = DATA.loc["wwtp_o2_demand_annual", "value"]
 
 MAPBOX_KEY = 'pk.eyJ1IjoiY3lnbnVzMjYiLCJhIjoiY2s5Z2MzeWVvMGx3NTNtbzRnbGtsOXl6biJ9.8SLdJuFQzuN-s4OlHbwzLg'
 STUDIO_STYLE ='mapbox://styles/cygnus26/clsei2b92016j01qqfc143six'
-NODES_GEOJSON="map/data/nodes.geojson"  # Placeholder path for map data
+NODES_GEOJSON="../map/data/nodes.geojson"  # Placeholder path for map data
 map_viewState = pdk.ViewState(
     latitude=52.374,
     longitude=6.642,
@@ -1194,7 +1195,7 @@ def load_map_data():
     gdf_nodes["lat"] = gdf_nodes.geometry.y
 
     # --- Load flow data and attach coordinates ---
-    df_flows = pd.read_csv("map/data/flows.csv")
+    df_flows = pd.read_csv("../map/data/flows.csv")
 
     for c in ("from_id", "to_id", "flow_type"):  # remove the crematoria flow (for now)
         df_flows[c] = df_flows[c].astype(str).str.strip()
@@ -1357,6 +1358,7 @@ main_col, right_col = st.columns([6, 2], gap="small", vertical_alignment="top")
 
 # ===== MAIN COLUMN: MAP + BOTTOM KPI ROW =====
 with main_col:
+    st.markdown("<div style='height:16px;'></div>", unsafe_allow_html=True)
     #Scenrio buttons
     sc1, sc2, sc3, sc4 = st.columns(4, gap="small")
 
@@ -1423,9 +1425,9 @@ with main_col:
 
     # --- MAP COMPONENT (center, enlarged) ---
     with st.container():
-        with open("map/map_test.html", 'r', encoding="utf-8") as f:
+        with open("../map/map_test.html", "r", encoding="utf-8") as f:
             mapbox_html = f.read()
-        with open("map/data/elec_to_houses.geojson", "r", encoding="utf-8") as f:
+        with open("../map/data/elec_to_houses.geojson", "r", encoding="utf-8") as f:
             pipe = json.load(f)
         nodes, edges = load_map_data()
 
