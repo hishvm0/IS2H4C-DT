@@ -1369,8 +1369,8 @@ with main_col:
             use_container_width=True,
             type="primary" if scenario_choice == "Make your own scenario" else "secondary",
             help=(
-                "All controls are unlocked. Choose any energy source and "
-                "electrolyser operating hours to build a custom scenario."
+                '''All controls are unlocked. Choose any energy source and \n
+                electrolyser operating hours to build a custom scenario.'''
             ),
         ):
             st.session_state.scenario_choice = "Make your own scenario"
@@ -1383,9 +1383,9 @@ with main_col:
             use_container_width=True,
             type="primary" if scenario_choice == "Scenario 1" else "secondary",
             help=(
-                "Scenario 1 – Baseline hub operation:\n"
-                "Energy source: Energy Mix (Solar + Wind)\n"
-                "Electrolyser: 8 h/day on weekdays"
+                '''Scenario 1 – Baseline hub operation:\n
+                Energy source: Energy Mix (Solar + Wind)\n
+                Electrolyser: 8 h/day on weekdays'''
             ),
         ):
             st.session_state.scenario_choice = "Scenario 1"
@@ -1398,10 +1398,10 @@ with main_col:
             use_container_width=True,
             type="primary" if scenario_choice == "Scenario 2" else "secondary",
             help=(
-                "Scenario 2 – Overproduction risk:\n"
-                "Energy source: Energy Mix (Solar + Wind)\n"
-                "Electrolyser: 24 h/day (Custom)\n"
-                "Highlights potential seasonal oversupply."
+                '''Scenario 2 – Overproduction risk:\n
+                Energy source: Energy Mix (Solar + Wind)\n
+                Electrolyser: 24 h/day (Custom)\n
+                Highlights potential seasonal oversupply.'''
             ),
         ):
             st.session_state.scenario_choice = "Scenario 2"
