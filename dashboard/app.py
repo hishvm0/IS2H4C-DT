@@ -320,7 +320,7 @@ html, body, [data-testid="stAppViewContainer"] {
 # =======================
 # CONSTANTS & FIXED DATA
 # =======================
-DATA = pd.read_csv("./data_constants.csv", index_col=0)
+DATA = pd.read_csv("dashboard/data_constants.csv", index_col=0)
 
 # System definition and datasets used in this prototype.
 ELECTROLYZER_KW = DATA.loc["el_rated_power_kw", "value"]                      # Electrolyser rated power
