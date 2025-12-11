@@ -1,6 +1,11 @@
-streamlit 
+streamlit
 pandas
-plotly
 numpy
+plotly
 altair
-
+pydeck
+geopandas
+shapely
+fiona
+pyproj
+rtree
