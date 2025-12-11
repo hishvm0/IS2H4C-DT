@@ -213,22 +213,16 @@ The dashboard automatically computes and displays:
 The KPI cards include **colour-coded thresholds** and small status icons (✔, ⚠, ⛔) to communicate performance at a glance.
 
 ---
-
 ## Screenshots
 
-
 ### Main Dashboard
+![Screenshot of the main DT dashboard layout.](Images/Dashboard.png)
 
-
-> ![Screenshot of the main DT dashboard layout (map + KPIs).](Images/dashboard.png)
-
-### Network Map
-
-> <video controls src="Images/FlowsAnimation.mp4.mp4" title="lows between electrolyser, WWTP, houses, and RES sources." width="100%" autoplay=true></video>
+### Network Map Animation
+[▶️ View flows animation](Images/FlowsAnimation.mp4)
 
 ### Battery Diagnostics Dialog
-
-> ![*Screenshot of the monthly battery flows view.*](Images/Battery%20Diag.png.png)
+![Battery diagnostics screenshot](Images/Battery%20Diag.png)
 
 ---
 
