@@ -1365,18 +1365,21 @@ with main_col:
             "Make your own scenario",
             key="scenario_btn_0",
             use_container_width=True,
+            type="primary" if scenario_choice == "Make your own scenario" else "secondary",
             help=(
                 "All controls are unlocked. Choose any energy source and "
                 "electrolyser operating hours to build a custom scenario."
             ),
         ):
             st.session_state.scenario_choice = "Make your own scenario"
+            st.rerun()
 
     with sc2:
         if st.button(
             "Scenario 1",
             key="scenario_btn_1",
             use_container_width=True,
+            type="primary" if scenario_choice == "Scenario 1" else "secondary",
             help=(
                 "Scenario 1 – Baseline hub operation:\n"
                 "Energy source: Energy Mix (Solar + Wind)\n"
@@ -1384,12 +1387,14 @@ with main_col:
             ),
         ):
             st.session_state.scenario_choice = "Scenario 1"
+            st.rerun()
 
     with sc3:
         if st.button(
             "Scenario 2",
             key="scenario_btn_2",
             use_container_width=True,
+            type="primary" if scenario_choice == "Scenario 2" else "secondary",
             help=(
                 "Scenario 2 – Overproduction risk:\n"
                 "Energy source: Energy Mix (Solar + Wind)\n"
@@ -1398,12 +1403,14 @@ with main_col:
             ),
         ):
             st.session_state.scenario_choice = "Scenario 2"
+            st.rerun()
 
     with sc4:
         if st.button(
             "Scenario 3",
             key="scenario_btn_3",
             use_container_width=True,
+            type="primary" if scenario_choice == "Scenario 3" else "secondary",
             help=(
                 "Scenario 3 – Grid fallback:\n"
                 "Energy source: Grid Only\n"
@@ -1412,6 +1419,8 @@ with main_col:
             ),
         ):
             st.session_state.scenario_choice = "Scenario 3"
+            st.rerun()
+
     # --- MAP COMPONENT (center, enlarged) ---
     with st.container():
         with open("../map/map_test.html", 'r', encoding="utf-8") as f:
