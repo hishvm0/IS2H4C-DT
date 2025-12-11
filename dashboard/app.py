@@ -1366,8 +1366,8 @@ with main_col:
             key="scenario_btn_0",
             use_container_width=True,
             help=(
-                "All controls are unlocked. Choose any energy source and "
-                "electrolyser operating hours to build a custom scenario."
+                '''All controls are unlocked. Choose any energy source and \n
+                electrolyser operating hours to build a custom scenario.'''
             ),
         ):
             st.session_state.scenario_choice = "Make your own scenario"
@@ -1378,9 +1378,9 @@ with main_col:
             key="scenario_btn_1",
             use_container_width=True,
             help=(
-                "Scenario 1 – Baseline hub operation:\n"
-                "Energy source: Energy Mix (Solar + Wind)\n"
-                "Electrolyser: 8 h/day on weekdays"
+                '''Scenario 1 – Baseline hub operation:\n
+                Energy source: Energy Mix (Solar + Wind)\n
+                Electrolyser: 8 h/day on weekdays'''
             ),
         ):
             st.session_state.scenario_choice = "Scenario 1"
@@ -1391,10 +1391,10 @@ with main_col:
             key="scenario_btn_2",
             use_container_width=True,
             help=(
-                "Scenario 2 – Overproduction risk:\n"
-                "Energy source: Energy Mix (Solar + Wind)\n"
-                "Electrolyser: 24 h/day (Custom)\n"
-                "Highlights potential seasonal oversupply."
+                '''Scenario 2 – Overproduction risk:\n
+                Energy source: Energy Mix (Solar + Wind)\n
+                Electrolyser: 24 h/day (Custom)\n
+                Highlights potential seasonal oversupply.'''
             ),
         ):
             st.session_state.scenario_choice = "Scenario 2"
@@ -1412,6 +1412,7 @@ with main_col:
             ),
         ):
             st.session_state.scenario_choice = "Scenario 3"
+            
     # --- MAP COMPONENT (center, enlarged) ---
     with st.container():
         with open("map/map_test.html", 'r', encoding="utf-8") as f:
