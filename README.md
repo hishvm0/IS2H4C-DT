@@ -1,6 +1,6 @@
-# DT Dashboard – Industrial Symbiosis & Hydrogen System Simulator
+# DT Dashboard – Hubs for Circularity 
 
-#### Streamlit · MapboxGL · Python · Circular Economy · Hydrogen Energy · Renewable Energy · Digital Twin
+#### Streamlit · MapboxGL · Python · Circular Economy · Hubs for Circularity · Industrial Symbiosis · Digital Twin
 
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.32%2B-FF4B4B?logo=streamlit&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
@@ -13,16 +13,16 @@ This repository contains an interactive **Digital Twin Dashboard** built with **
 
 
 
-## 👤 Authors
-**Hisham Afash** [<img src="https://upload.wikimedia.org/wikipedia/commons/8/81/LinkedIn_icon.svg" height="20"/>](https://www.linkedin.com/in/hisham-afash-200141208/)[<img src="https://upload.wikimedia.org/wikipedia/commons/0/06/ORCID_iD.svg" height="20"/>](https://orcid.org/0009-0005-0245-633X) | University of Twente - BMS Faculty
+## Authors
+**Hisham Afash** [<img src="https://upload.wikimedia.org/wikipedia/commons/8/81/LinkedIn_icon.svg" height="20"/>](https://www.linkedin.com/in/hisham-afash-200141208/)[<img src="https://upload.wikimedia.org/wikipedia/commons/0/06/ORCID_iD.svg" height="20"/>]((https://orcid.org/0009-0007-3127-7298)) | University of Twente - BMS Faculty
 **Iván Cárdenas León**  [<img src="https://upload.wikimedia.org/wikipedia/commons/8/81/LinkedIn_icon.svg" height="20"/>](https://www.linkedin.com/in/ivancardenasleon/) [<img src="https://upload.wikimedia.org/wikipedia/commons/0/06/ORCID_iD.svg" height="20"/>](https://orcid.org/0009-0005-0245-633X) | University of Twente – ITC Faculty
-**AAA**  [<img src="https://upload.wikimedia.org/wikipedia/commons/0/06/ORCID_iD.svg" height="20"/>](https://orcid.org/0009-0005-0245-633X) | University of Twente - BMS Faculty
-**BBB* [<img src="https://upload.wikimedia.org/wikipedia/commons/0/06/ORCID_iD.svg" height="20"/>](https://orcid.org/0009-0005-0245-633X) | University of Twente - BMS Faculty
+**Yifei Yu**  [<img src="https://upload.wikimedia.org/wikipedia/commons/0/06/ORCID_iD.svg" height="20"/>](https://orcid.org/0009-0005-0245-633X) | University of Twente - BMS Faculty
+**Devrim Murat Yazan* [<img src="https://upload.wikimedia.org/wikipedia/commons/0/06/ORCID_iD.svg" height="20"/>](https://orcid.org/0009-0005-0245-633X) | University of Twente - BMS Faculty
 **Mila Koeva** [<img src="https://upload.wikimedia.org/wikipedia/commons/0/06/ORCID_iD.svg" height="20"/>](https://orcid.org/0009-0005-0245-633X) | University of Twente - ITC Faculty
 
 ---
 
-## 📝 Description
+## Description
 The dashboard is designed to support strategic scenario exploration for hydrogen hubs, including:
 
 - Energy source switching (solar, wind, mixed, grid)
@@ -36,7 +36,7 @@ The dashboard is designed to support strategic scenario exploration for hydrogen
 It is a fully functioning prototype used for teaching and research demonstrations within the EU IS2H4C project.
 
 ---
-## 📌 Citation
+## Citation
 
 > If you use this dataset, please cite:
 ~~~
@@ -49,7 +49,7 @@ url = {is2h4c-dt.streamlit.app/}
 ~~~
 ---
 
-## ✨ Features
+## Features
 
 ### Hydrogen System Simulation
 
@@ -94,7 +94,7 @@ url = {is2h4c-dt.streamlit.app/}
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```text
 DT-Dashboard/
@@ -118,7 +118,7 @@ DT-Dashboard/
 
 ---
 
-## 🚀 Installation
+## Installation
 
 ### 1. Clone the repository
 
@@ -158,7 +158,7 @@ http://localhost:8501
 
 ---
 
-## 🔧 Requirements
+## Requirements
 
 Minimal `requirements.txt`: 
 
@@ -175,7 +175,7 @@ plotly
 
 ---
 
-## 🗺️ Map Setup
+## Map Setup
 
 The HTML template `map/map_test.html` contains placeholders that are dynamically replaced:
 
@@ -196,7 +196,7 @@ You can customise the **Mapbox Studio style** and node/edge rendering in the HTM
 
 ---
 
-## 📊 Key Performance Indicators (KPIs)
+## Key Performance Indicators (KPIs)
 
 The dashboard automatically computes and displays:
 
@@ -214,7 +214,7 @@ The KPI cards include **colour-coded thresholds** and small status icons (✔, �
 
 ---
 
-## 📸 Screenshots
+## Screenshots
 
 
 ### Main Dashboard
@@ -232,13 +232,13 @@ The KPI cards include **colour-coded thresholds** and small status icons (✔, �
 
 ---
 
-## 📚 Academic / Teaching Context
+## Academic / Teaching Context
 
 If you use this tool in a course or publication, please consider citing the repository.
 
 ---
 
-## 📄 License
+## License
 
 This work is licensed under a
 [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License][cc-by-nc-sa].
@@ -251,7 +251,7 @@ This work is licensed under a
 
 ---
 
-## 🤝 Acknowledgements
+## Acknowledgements
 
 Developed as part of the **IS2H4C – Industrial Symbiosis Hubs for Cilarity** initiative (EU Horizon Europe).  
 
