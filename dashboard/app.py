@@ -1412,10 +1412,10 @@ with main_col:
             use_container_width=True,
             type="primary" if scenario_choice == "Scenario 3" else "secondary",
             help=(
-                "Scenario 3 – Grid fallback:\n"
-                "Energy source: Grid Only\n"
-                "Electrolyser: 8 h/day on weekdays\n"
-                "Shows CO₂ impact of relying on grid electricity."
+                '''Scenario 3 – Grid fallback:\n
+                Energy source: Grid Only\n
+                Electrolyser: 8 h/day on weekdays\n
+                Shows CO₂ impact of relying on grid electricity.'''
             ),
         ):
             st.session_state.scenario_choice = "Scenario 3"
