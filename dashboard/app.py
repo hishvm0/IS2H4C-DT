@@ -10,7 +10,14 @@ import geopandas as gpd
 import streamlit.components.v1 as components
 from shapely.geometry import LineString, Point
 import json
+from pathlib import Path
 
+# Base directories
+THIS_DIR = Path(__file__).resolve().parent            # /dashboard
+ROOT_DIR = THIS_DIR.parent                            # /
+DATA_DIR = THIS_DIR                                   # data_constants.csv is here
+MAP_DIR = ROOT_DIR / "map"                            # /map
+MAP_DATA_DIR = MAP_DIR / "data"                       # /map/data
 
 # =======================
 # PAGE SETUP
@@ -320,7 +327,8 @@ html, body, [data-testid="stAppViewContainer"] {
 # =======================
 # CONSTANTS & FIXED DATA
 # =======================
-DATA = pd.read_csv("dashboard/data_constants.csv", index_col=0)
+DATA = pd.read_csv(DATA_DIR /"data_constants.csv", index_col=0)
+
 
 # System definition and datasets used in this prototype.
 ELECTROLYZER_KW = DATA.loc["el_rated_power_kw", "value"]                      # Electrolyser rated power
@@ -376,7 +384,7 @@ WWTP_O2_DEMAND = DATA.loc["wwtp_o2_demand_annual", "value"]
 
 MAPBOX_KEY = 'pk.eyJ1IjoiY3lnbnVzMjYiLCJhIjoiY2s5Z2MzeWVvMGx3NTNtbzRnbGtsOXl6biJ9.8SLdJuFQzuN-s4OlHbwzLg'
 STUDIO_STYLE ='mapbox://styles/cygnus26/clsei2b92016j01qqfc143six'
-NODES_GEOJSON="../map/data/nodes.geojson"  # Placeholder path for map data
+NODES_GEOJSON= MAP_DATA_DIR / "nodes.geojson"  # Placeholder path for map data
 map_viewState = pdk.ViewState(
     latitude=52.374,
     longitude=6.642,
@@ -1194,7 +1202,7 @@ def load_map_data():
     gdf_nodes["lat"] = gdf_nodes.geometry.y
 
     # --- Load flow data and attach coordinates ---
-    df_flows = pd.read_csv("../map/data/flows.csv")
+    df_flows = pd.read_csv(MAP_DATA_DIR / "flows.csv")
 
     for c in ("from_id", "to_id", "flow_type"):  # remove the crematoria flow (for now)
         df_flows[c] = df_flows[c].astype(str).str.strip()
@@ -1357,6 +1365,7 @@ main_col, right_col = st.columns([6, 2], gap="small", vertical_alignment="top")
 
 # ===== MAIN COLUMN: MAP + BOTTOM KPI ROW =====
 with main_col:
+    st.markdown("<div style='height:16px;'></div>", unsafe_allow_html=True)
     #Scenrio buttons
     sc1, sc2, sc3, sc4 = st.columns(4, gap="small")
 
@@ -1365,59 +1374,70 @@ with main_col:
             "Make your own scenario",
             key="scenario_btn_0",
             use_container_width=True,
+            type="primary" if scenario_choice == "Make your own scenario" else "secondary",
             help=(
-                "All controls are unlocked. Choose any energy source and "
-                "electrolyser operating hours to build a custom scenario."
+                '''All controls are unlocked. Choose any energy source and \n
+                electrolyser operating hours to build a custom scenario.'''
             ),
         ):
             st.session_state.scenario_choice = "Make your own scenario"
+            st.rerun()
 
     with sc2:
         if st.button(
             "Scenario 1",
             key="scenario_btn_1",
             use_container_width=True,
+            type="primary" if scenario_choice == "Scenario 1" else "secondary",
             help=(
-                "Scenario 1 – Baseline hub operation:\n"
-                "Energy source: Energy Mix (Solar + Wind)\n"
-                "Electrolyser: 8 h/day on weekdays"
+                '''Scenario 1 – Baseline hub operation:\n
+                Energy source: Energy Mix (Solar + Wind)\n
+                Electrolyser: 8 h/day on weekdays'''
             ),
         ):
             st.session_state.scenario_choice = "Scenario 1"
+            st.rerun()
 
     with sc3:
         if st.button(
             "Scenario 2",
             key="scenario_btn_2",
             use_container_width=True,
+            type="primary" if scenario_choice == "Scenario 2" else "secondary",
             help=(
-                "Scenario 2 – Overproduction risk:\n"
-                "Energy source: Energy Mix (Solar + Wind)\n"
-                "Electrolyser: 24 h/day (Custom)\n"
-                "Highlights potential seasonal oversupply."
+                '''Scenario 2 – Overproduction risk:\n
+                Energy source: Energy Mix (Solar + Wind)\n
+                Electrolyser: 24 h/day (Custom)\n
+                Highlights potential seasonal oversupply.'''
             ),
         ):
             st.session_state.scenario_choice = "Scenario 2"
+            st.rerun()
 
     with sc4:
         if st.button(
             "Scenario 3",
             key="scenario_btn_3",
             use_container_width=True,
+            type="primary" if scenario_choice == "Scenario 3" else "secondary",
             help=(
-                "Scenario 3 – Grid fallback:\n"
-                "Energy source: Grid Only\n"
-                "Electrolyser: 8 h/day on weekdays\n"
-                "Shows CO₂ impact of relying on grid electricity."
+                '''Scenario 3 – Grid fallback:\n
+                Energy source: Grid Only\n
+                Electrolyser: 8 h/day on weekdays\n
+                Shows CO₂ impact of relying on grid electricity.'''
             ),
         ):
             st.session_state.scenario_choice = "Scenario 3"
+            st.rerun()
+
     # --- MAP COMPONENT (center, enlarged) ---
     with st.container():
-        with open("../map/map_test.html", 'r', encoding="utf-8") as f:
+        with open(MAP_DIR / "map_test.html", 'r', encoding="utf-8") as f:
             mapbox_html = f.read()
-        with open("../map/data/elec_to_houses.geojson", "r", encoding="utf-8") as f:
+
+        with open(MAP_DATA_DIR / "elec_to_houses.geojson") as f:
             pipe = json.load(f)
+
         nodes, edges = load_map_data()
 
         nodes_json = nodes.to_json()
