@@ -361,6 +361,30 @@ button[kind="primary"]{
   background: #ff4b4b !important;  /* Streamlit-ish red */
   border: 1px solid rgba(255,255,255,0.15) !important;
 }
+/* Radio + checkbox labels */
+[data-testid="stSidebar"] label,
+[data-testid="stSidebar"] span,
+[data-testid="stSidebar"] p {
+  color: #ffffff !important;
+}
+
+/* Markdown text inside sidebar */
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] * {
+  color: #ffffff !important;
+}
+
+/* Section headers */
+[data-testid="stSidebar"] h1,
+[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] h3,
+[data-testid="stSidebar"] h4 {
+  color: #ffffff !important;
+}
+
+/* Help text / captions (small grey text Streamlit adds) */
+[data-testid="stSidebar"] small {
+  color: #dddddd !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
