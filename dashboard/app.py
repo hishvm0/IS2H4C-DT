@@ -320,6 +320,47 @@ html, body, [data-testid="stAppViewContainer"] {
   color: #ff6b6b;   /* red */
 }
 
+/* ===== NEW: make buttons readable in light + dark ===== */
+.stButton > button {
+  color: #ffffff !important;
+  background-color: #26264d !important;
+  border: 1px solid rgba(255,255,255,0.25) !important;
+  border-radius: 8px !important;
+}
+
+.stButton > button:hover {
+  filter: brightness(1.06);
+}
+
+/* Optional: keep Streamlit header dark as well */
+header, [data-testid="stHeader"] {
+  background: #0e1117 !important;
+}
+button[kind="secondary"],
+button[kind="primary"]{
+  background: #26264d !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255,255,255,0.25) !important;
+}
+
+/* Make sure hover/active still looks fine */
+button[kind="secondary"]:hover,
+button[kind="primary"]:hover{
+  filter: brightness(1.06);
+}
+
+/* Safety net for other wrappers Streamlit uses */
+div[data-testid="stButton"] > button {
+  background: #26264d !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255,255,255,0.25) !important;
+}
+
+/* Your selected (primary) can stay red if you want */
+button[kind="primary"]{
+  background: #ff4b4b !important;  /* Streamlit-ish red */
+  border: 1px solid rgba(255,255,255,0.15) !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
