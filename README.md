@@ -1,4 +1,4 @@
-# DT Dashboard – Hubs for Circularity 
+# Digital Twin – Hubs for Circularity 
 
 #### Streamlit · MapboxGL · Python · Circular Economy · Hubs for Circularity · Industrial Symbiosis · Digital Twin
 
@@ -13,17 +13,33 @@ This repository contains an interactive **Digital Twin Dashboard** built with **
 
 
 
-## Authors
-**Hisham Afash** [<img src="https://upload.wikimedia.org/wikipedia/commons/8/81/LinkedIn_icon.svg" height="20"/>](https://www.linkedin.com/in/hisham-afash-200141208/)[<img src="https://upload.wikimedia.org/wikipedia/commons/0/06/ORCID_iD.svg" height="20"/>]((https://orcid.org/0009-0007-3127-7298)) | University of Twente - BMS Faculty
-**Iván Cárdenas León**  [<img src="https://upload.wikimedia.org/wikipedia/commons/8/81/LinkedIn_icon.svg" height="20"/>](https://www.linkedin.com/in/ivancardenasleon/) [<img src="https://upload.wikimedia.org/wikipedia/commons/0/06/ORCID_iD.svg" height="20"/>](https://orcid.org/0009-0005-0245-633X) | University of Twente – ITC Faculty
-**Yifei Yu**  [<img src="https://upload.wikimedia.org/wikipedia/commons/0/06/ORCID_iD.svg" height="20"/>](https://orcid.org/0009-0005-0245-633X) | University of Twente - BMS Faculty
-**Devrim Murat Yazan* [<img src="https://upload.wikimedia.org/wikipedia/commons/0/06/ORCID_iD.svg" height="20"/>](https://orcid.org/0009-0005-0245-633X) | University of Twente - BMS Faculty
-**Mila Koeva** [<img src="https://upload.wikimedia.org/wikipedia/commons/0/06/ORCID_iD.svg" height="20"/>](https://orcid.org/0009-0005-0245-633X) | University of Twente - ITC Faculty
+## Authors (to be fixed later)
+
+**Hisham Afash**  
+[<img src="https://upload.wikimedia.org/wikipedia/commons/0/06/ORCID_iD.svg" height="16"/>](https://orcid.org/0009-0007-3127-7298)  
+University of Twente – BMS Faculty  
+
+**Iván Cárdenas León**  
+[<img src="https://upload.wikimedia.org/wikipedia/commons/0/06/ORCID_iD.svg" height="16"/>](https://orcid.org/0009-0005-0245-633X)  
+University of Twente – ITC Faculty  
+
+**Yifei Yu**  
+[<img src="https://upload.wikimedia.org/wikipedia/commons/0/06/ORCID_iD.svg" height="16"/>](https://orcid.org/0000-0001-5819-4651)  
+University of Twente – BMS Faculty  
+
+**Devrim Murat Yazan**  
+[<img src="https://upload.wikimedia.org/wikipedia/commons/0/06/ORCID_iD.svg" height="16"/>](https://orcid.org/0000-0002-4341-2529)  
+University of Twente – BMS Faculty  
+
+**Mila Koeva**  
+[<img src="https://upload.wikimedia.org/wikipedia/commons/0/06/ORCID_iD.svg" height="16"/>](https://orcid.org/0000-0001-7612-5270)  
+University of Twente – ITC Faculty  
+
 
 ---
 
 ## Description
-The dashboard is designed to support strategic scenario exploration for hydrogen hubs, including:
+The digital twin is designed to support strategic scenario exploration for hydrogen hubs, including:
 
 - Energy source switching (solar, wind, mixed, grid)
 - Electrolyser operating hour schedules
@@ -213,22 +229,16 @@ The dashboard automatically computes and displays:
 The KPI cards include **colour-coded thresholds** and small status icons (✔, ⚠, ⛔) to communicate performance at a glance.
 
 ---
-
 ## Screenshots
 
-
 ### Main Dashboard
+![Screenshot of the main DT dashboard layout.](Images/Dashboard.png)
 
-
-> ![Screenshot of the main DT dashboard layout (map + KPIs).](Images/dashboard.png)
-
-### Network Map
-
-> <video controls src="Images/FlowsAnimation.mp4.mp4" title="lows between electrolyser, WWTP, houses, and RES sources." width="100%" autoplay=true></video>
+### Network Map Animation
+[▶️ View flows animation](Images/FlowsAnimation.mp4)
 
 ### Battery Diagnostics Dialog
-
-> ![*Screenshot of the monthly battery flows view.*](Images/Battery%20Diag.png.png)
+![Battery diagnostics screenshot](Images/Battery%20Diag.png)
 
 ---
 
