@@ -1,0 +1,45 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "Industrial Symbiosis and Hydrogen System Digital Twin"
+abstract: >
+  An interactive Digital Twin Dashboard built with Streamlit, integrating
+  hydrogen production modelling, battery storage, seasonal demand simulation,
+  and a Mapbox-based industrial symbiosis network visualisation. Developed as
+  part of the IS2H4C – Industrial Symbiosis Hubs for Circularity initiative
+  (EU Horizon Europe).
+repository-code: "https://github.com/hishvm0/IS2H4C-DT"
+url: "https://is2h4c-dt.streamlit.app/"
+license: CC-BY-NC-SA-4.0
+version: "1.0.0"
+date-released: "2025-01-01"
+keywords:
+  - digital twin
+  - hydrogen
+  - industrial symbiosis
+  - circular economy
+  - streamlit
+  - geospatial
+  - hubs for circularity
+  - energy modelling
+authors:
+  - family-names: "Asfah"
+    given-names: "Hisham"
+    orcid: "https://orcid.org/0009-0007-3127-7298"
+    affiliation: "University of Twente – BMS Faculty"
+  - family-names: "Cárdenas-León"
+    given-names: "Iván"
+    orcid: "https://orcid.org/0009-0005-0245-633X"
+    affiliation: "University of Twente – ITC Faculty"
+  - family-names: "Yu"
+    given-names: "Yifei"
+    orcid: "https://orcid.org/0000-0001-5819-4651"
+    affiliation: "University of Twente – BMS Faculty"
+  - family-names: "Yazan"
+    given-names: "Devrim Murat"
+    orcid: "https://orcid.org/0000-0002-4341-2529"
+    affiliation: "University of Twente – BMS Faculty"
+  - family-names: "Koeva"
+    given-names: "Mila"
+    orcid: "https://orcid.org/0000-0001-7612-5270"
+    affiliation: "University of Twente – ITC Faculty"
