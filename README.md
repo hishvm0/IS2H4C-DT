@@ -15,24 +15,19 @@ This repository contains an interactive **Digital Twin Dashboard** built with **
 
 ## Authors (to be fixed later)
 
-**Hisham Afash**  
-[<img src="https://upload.wikimedia.org/wikipedia/commons/0/06/ORCID_iD.svg" height="16"/>](https://orcid.org/0009-0007-3127-7298)  
+**Hisham Afash** [<img src="https://upload.wikimedia.org/wikipedia/commons/0/06/ORCID_iD.svg" height="16"/>](https://orcid.org/0009-0007-3127-7298)  
 University of Twente – BMS Faculty  
 
-**Iván Cárdenas León**  
-[<img src="https://upload.wikimedia.org/wikipedia/commons/0/06/ORCID_iD.svg" height="16"/>](https://orcid.org/0009-0005-0245-633X)  
+**Iván Cárdenas-León** [<img src="https://upload.wikimedia.org/wikipedia/commons/0/06/ORCID_iD.svg" height="16"/>](https://orcid.org/0009-0005-0245-633X)  
 University of Twente – ITC Faculty  
 
-**Yifei Yu**  
-[<img src="https://upload.wikimedia.org/wikipedia/commons/0/06/ORCID_iD.svg" height="16"/>](https://orcid.org/0000-0001-5819-4651)  
+**Yifei Yu**[<img src="https://upload.wikimedia.org/wikipedia/commons/0/06/ORCID_iD.svg" height="16"/>](https://orcid.org/0000-0001-5819-4651)  
 University of Twente – BMS Faculty  
 
-**Devrim Murat Yazan**  
-[<img src="https://upload.wikimedia.org/wikipedia/commons/0/06/ORCID_iD.svg" height="16"/>](https://orcid.org/0000-0002-4341-2529)  
+**Devrim Murat Yazan**  [<img src="https://upload.wikimedia.org/wikipedia/commons/0/06/ORCID_iD.svg" height="16"/>](https://orcid.org/0000-0002-4341-2529)  
 University of Twente – BMS Faculty  
 
-**Mila Koeva**  
-[<img src="https://upload.wikimedia.org/wikipedia/commons/0/06/ORCID_iD.svg" height="16"/>](https://orcid.org/0000-0001-7612-5270)  
+**Mila Koeva**  [<img src="https://upload.wikimedia.org/wikipedia/commons/0/06/ORCID_iD.svg" height="16"/>](https://orcid.org/0000-0001-7612-5270)  
 University of Twente – ITC Faculty  
 
 
@@ -57,7 +52,7 @@ It is a fully functioning prototype used for teaching and research demonstration
 > If you use this dataset, please cite:
 ~~~
 @misc{AsfahIS2H4C,
-author = {Asfah, Hisham and Cardenas-Leon, Ivan and AAA and BBB and Koeva, Mila},
+author = {Asfah, Hisham and Cardenas-Leon, Ivan and Yifei Yu and Devrim Murat Yazan and Koeva, Mila},
 title = {{Industrial Symbiosis and Hydrogen System Digital Twin}},
 doi = {pending},
 url = {is2h4c-dt.streamlit.app/}
