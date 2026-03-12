@@ -13,7 +13,7 @@ This repository contains an interactive **Digital Twin Dashboard** built with **
 
 
 
-## Authors (to be fixed later)
+## Authors
 
 **Hisham Afash** [<img src="https://upload.wikimedia.org/wikipedia/commons/0/06/ORCID_iD.svg" height="16"/>](https://orcid.org/0009-0007-3127-7298)  
 University of Twente – BMS Faculty  
