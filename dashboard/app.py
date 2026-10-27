@@ -405,7 +405,7 @@ EMISSION_FACTOR_GRID = DATA.loc["em_factor_grid_kg_per_kwh", "value"]           
 # Installed capacities and annual demand used by the model.
 pv_capacity_kw = DATA.loc["pv_capacity_kw", "value"]
 wind_capacity_kw = DATA.loc["wind_capacity_kw", "value"]
-electrolyzer_eff_kwh_per_kg = 48      # Conversion used for monthly H₂ charts
+electrolyzer_eff_kwh_per_kg = SEC      # Conversion used for monthly H₂ charts
 annual_h2_demand = DATA.loc["annual_h2_demand_kg", "value"] # kg/year (from facilities dataset)
 
 enable_battery = True  # keep battery logic ON
@@ -676,7 +676,7 @@ h2_production_tooltip = (
 
 
 # --- Waste heat recovery ---
-HEAT_RECOVERY_FRAC = DATA.loc["heat_recovery_frac", "value"]  # 20% recoverable (Kumar et al., 2025; Lungu et al., 2025)
+HEAT_RECOVERY_FRAC = DATA.loc["heat_recovery_frac", "value"]  
 monthly_waste_heat_kWh = usable_kwh * HEAT_RECOVERY_FRAC
 annual_waste_heat_kWh = monthly_waste_heat_kWh.sum()
 
